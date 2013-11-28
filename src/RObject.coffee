@@ -1,4 +1,3 @@
-
 do ->
   factory = (EventEmitter) ->
 
@@ -17,7 +16,7 @@ do ->
           when 'object'
             result = {}
             for key, val of @_val
-              result[key] = val.toObject?() or val
+              result[key] = if val.toObject then val.toObject() else val
             result
           else
             @value()
@@ -27,12 +26,14 @@ do ->
         @_rtype or= new RObject @_type
 
       length: ->
-        @_rlength or= new RObject @_val.length
+        @_rlength or= new RObject @_val?.length
 
       set: (val) ->
         throw new Error('Cannot set read only object') if @_readOnly
 
         val = null if val == undefined # undefined is translated to null
+
+        return this if @_val == val # don't fire change event for the same value
         @_val = val
 
         @_type = RObject.typeFromNative @_val
@@ -52,6 +53,9 @@ do ->
         this
 
       prop: (name, value) ->
+
+        # maybe changes to the parent RObject should be fired as a change on this
+
         if arguments.length > 1
           # set property to value
           @prop(name).set value
@@ -124,7 +128,6 @@ do ->
       add: (items, opts) ->
         #todo: consider renaming to just push, I don't like that this is a mutator or a getter fn
         #todo: handle adding non-number types
-
         switch @_type
           when 'array'
             index = opts?.at ? @_val.length
@@ -157,42 +160,84 @@ do ->
           else
             @
 
-      #todo handle remove
       filter: (passFail) ->
         child = new RObject()
-        update = =>
-          child.set switch @_type
-            when 'array'
-              passing = for item in @_val
-                if passFail(item).value()
-                  item
-                else
-                  continue
 
-              passing
-            else
-              null
-
-
-        @on 'add', (items, {index}) =>
+        addToChild = (items, {index, noListen}) =>
           items = [items] if !Array.isArray items
 
           # find the nearest preceding item in parent that is also in child
           parentIndex = index
-
-          while (childIndex = child._val.indexOf(@_val[parentIndex])) == -1    # child._val
+          while (childIndex = child.value().indexOf(@_val[parentIndex])) == -1
             --parentIndex
 
-            if parentIndex <= 0
+            if parentIndex < 0
               break
 
-          passing = for item in items
-            if passFail(item).value()
+          passing = for item, i in items
+            passes = passFail item
+            updatee = do (i, passes, item) =>
+              =>
+                # console.log @_val.indexOf(item)
+                if passes.value()
+                  addToChild item, index: index + i, noListen: true
+                else
+                  removeFromChild item, index: index + i
+
+
+            passes.on 'change', updatee if !noListen
+
+            if passes.value()
               item
             else
               continue
 
-          child.add passing, at: childIndex + 1
+          if passing.length
+            child.add passing, at: childIndex + 1
+
+
+        removeFromChild = (items, {index}) =>
+          items = [items] if !Array.isArray items
+
+          # find the index of the first item removed (if any) that is also in child
+          removedIndex = 0
+          while (childIndex = child.value().indexOf(items[removedIndex])) == -1
+            ++removedIndex
+
+            if removedIndex >= items.length
+              # none of the removed items were in child, nothing to do
+              return
+
+          # now removedIndex is the index of the first item in items that was in child
+          #  and childIndex is the index of that item in child
+          # we now need to start removing items
+          #  keeping in mind not all items are in child so we may have to skip some
+
+          while removedIndex < items.length && childIndex < child.value().length
+            match = items[removedIndex] == child.value()[childIndex]
+
+            if match
+              child.splice childIndex, 1
+              ++removedIndex
+            else
+              ++childIndex
+
+        update = =>
+          switch @_type
+            when 'array'
+              child.set []
+              # for item in @_val
+              #   if passFail(item).value()
+              #     item
+              #   else
+              #     continue
+              addToChild @_val, index: 0
+            else
+              child.set null
+
+
+        @on 'add', addToChild
+        @on 'remove', removeFromChild
 
         @on 'change', update
         update()

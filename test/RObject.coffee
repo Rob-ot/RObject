@@ -7,6 +7,9 @@ RObject = require '../src/RObject'
 
 # everything that returns an RObject should handle type changes of self
 
+
+# test length
+
 types = [
   'empty'
   'empty'
@@ -58,6 +61,14 @@ everyType = (fn) ->
 
 
 describe '#set()', ->
+  it 'should not fire change event when set to the same value', ->
+    everyType (o) ->
+      changes = 0
+      o.on 'change', -> changes++
+      o.set '5'
+      assert.equal changes, 1
+      o.set '5'
+      assert.equal changes, 1
 
 
 describe '#type()', ->
@@ -124,6 +135,11 @@ describe '#toObject()', ->
       })
     ])
     assert.deepEqual complex.toObject(), ['foo', 6, true, [3], {one: '1', two: '2', more: {a: 'aee', b: 'bee'}}]
+
+  it 'should give native value for items that have had a property accessed', ->
+    o = new RObject({ d: false })
+    o.prop 'd'
+    assert.deepEqual { d: false }, o.toObject()
 
 describe '#inverse()', ->
   describe 'type: boolean', ->
@@ -388,6 +404,20 @@ describe '#filter()', ->
       ro.splice 0, 0, new RObject(2)
       assert.deepEqual evens.toObject(), [2, 4]
 
+    it 'should remove items that are removed from the source', ->
+      source = new RObject([
+        new RObject(3)
+        new RObject(4)
+        new RObject(3) # remove
+        new RObject(8) # remove
+        new RObject(2) # remove
+        new RObject(5)
+        new RObject(6)
+      ])
+      evens = source.filter isEven
+      source.splice 2, 3
+      assert.deepEqual evens.toObject(), [4, 6]
+
     it 'should always call back with an RObject', ->
       ro = new RObject([3])
       isRObject = false
@@ -396,6 +426,38 @@ describe '#filter()', ->
         new RObject(true)
 
       assert.equal isRObject, true
+
+    it 'should update filter when given boolean changes', ->
+      first = new RObject(3)
+      ro = new RObject([first])
+      evens = ro.filter isEven
+      first.set 4
+      assert.deepEqual evens.toObject(), [4]
+      first.set 3
+      assert.deepEqual evens.toObject(), []
+
+    it 'should update filter when given boolean changes for dynamically added items', ->
+      four = new RObject(4)
+      ro = new RObject([new RObject(2), new RObject(3), new RObject(5), new RObject(6)])
+      evens = ro.filter isEven
+      ro.splice 2, 0, four
+      four.set 4
+      assert.deepEqual evens.toObject(), [2, 4, 6]
+      four.set 3
+      assert.deepEqual evens.toObject(), [2, 6]
+      # do it again to make sure it is releasing event listeners and stuff
+      four.set 4
+      assert.deepEqual evens.toObject(), [2, 4, 6]
+      four.set 3
+      assert.deepEqual evens.toObject(), [2, 6]
+
+    it 'should maintain order of filtered arrays', ->
+      o = new RObject([1, 2, 3, 4, 5, 6])
+      evens = o.filter isEven
+      o.value()[3].set 11
+      o.value()[3].set 3
+      assert.deepEqual evens.toObject(), [2, 6]
+
 
   it 'should handle dynamic type change', ->
     o = new RObject()
