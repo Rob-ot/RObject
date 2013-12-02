@@ -75,19 +75,12 @@ do ->
                   @_val[name] = new RObject(@_val[name])
 
                 source = @_val[name]
-                lock = false
 
                 updateChild = =>
-                  return if lock
-                  lock = true
                   child.set source.value()
-                  lock = false
 
                 updateParent = =>
-                  return if lock
-                  lock = true
                   source.set child.value()
-                  lock = false
 
                 source.on 'change', updateChild
                 child.on 'change', updateParent
@@ -113,6 +106,13 @@ do ->
           operand.on 'change', cb
         cb()
         return child
+
+      # executes cb with @value() immediately and anytime this changes
+      watch: (cb) ->
+        run = =>
+          cb @value()
+        @on 'change', run
+        run()
 
       inverse: ->
         @combine (value) =>
@@ -245,6 +245,33 @@ do ->
         child
 
 
+      reduce: (reducer, initial) ->
+        child = new RObject()
+        if arguments.length == 1
+          initial = new RObject()
+
+        update = =>
+          switch @_type
+            when 'array'
+              reReduce = =>
+                child.set @_val.reduce(->
+                  result = reducer arguments...
+                  result.on 'change', reReduce
+                  result
+                , initial).value()
+
+              @on 'add', reReduce
+              @on 'remove', reReduce
+              reReduce()
+            else
+              child.set null
+
+        @on 'change', update
+        update()
+
+        child
+
+
       map: (transform) ->
         child = new RObject()
         update = =>
@@ -330,9 +357,10 @@ do ->
         @combine operand, (aVal, bVal) ->
           aVal + bVal
 
+      #todo: make work on arrays
       indexOf: (operand) ->
         switch @_type
-          when 'array', 'string'
+          when 'string'
             @combine operand, (aVal, bVal) ->
               aVal.indexOf bVal
           else

@@ -3,10 +3,11 @@ assert = require 'assert'
 
 RObject = require '../src/RObject'
 
-#todo: test noop cases and stuff
+#todo: test empty cases and stuff
 
 # everything that returns an RObject should handle type changes of self
 
+# #watch()
 
 # test length
 
@@ -51,25 +52,20 @@ everyType = (fn) ->
     for setValue, i in typeValues
       fn new RObject(typeValue).set(setValue), types[i], setValue
 
-  # cloned with the original changed later
-  # for typeValue in typeValues
-  #   for setValue, i in typeValues
-  #     orig = new RObject(typeValue)
-  #     clone = new RObject(orig)
-  #     orig.set(setValue)
-  #     fn clone, types[i], setValue
-
+everyTypeExcept = (blacklist, fn) ->
+  everyType (result, type, value) =>
+    if type != blacklist
+      fn result, type, value
 
 describe '#set()', ->
   it 'should not fire change event when set to the same value', ->
-    everyType (o) ->
+    o = new RObject()
+    o.on 'change', -> changes++
+    for val in typeValues
+      o.set val
       changes = 0
-      o.on 'change', -> changes++
-      o.set '5'
-      assert.equal changes, 1
-      o.set '5'
-      assert.equal changes, 1
-
+      o.set val
+      assert.equal changes, 0
 
 describe '#type()', ->
   it 'should detect the type based on what is passed in', ->
@@ -466,6 +462,93 @@ describe '#filter()', ->
     assert.deepEqual evens.toObject(), [4]
     o.set null
     assert.deepEqual evens.toObject(), null
+
+
+describe '#reduce()', ->
+  add = (prev, current) ->
+    prev.add current
+
+  describe 'type: Array', ->
+    it 'should run through items and give the result', ->
+      o = new RObject([ new RObject(1), new RObject(2), new RObject(3), new RObject(4) ])
+      result = o.reduce (prev, current) ->
+        if prev.type().value() == 'empty'
+          prev.set 0
+        prev.add current
+      assert.equal result.value(), 10
+
+    it 'should run through items and give the result starting with given inital value', ->
+      o = new RObject([ new RObject(1), new RObject(2), new RObject(3), new RObject(4) ])
+      result = o.reduce add, new RObject(8)
+      assert.equal result.value(), 18
+
+    it 'should run through items and give the result starting with given inital value', ->
+      o = new RObject([ new RObject(1), new RObject(2), new RObject(3), new RObject(4) ])
+      result = o.reduce add, new RObject(0)
+      assert.equal result.value(), 10
+
+    it 'should update reduced value when item is added to array', ->
+      o = new RObject([ new RObject(1), new RObject(2), new RObject(3), new RObject(4) ])
+      result = o.reduce add, new RObject(0)
+      o.splice 1, 0, new RObject(37)
+      assert.equal result.value(), 47
+
+    it 'should update reduced value when multiple items are added to array', ->
+      o = new RObject([ new RObject(1), new RObject(2), new RObject(3), new RObject(4) ])
+      result = o.reduce add, new RObject(0)
+      o.splice 1, 0, new RObject(37), new RObject(74), new RObject(86)
+      assert.equal result.value(), 207
+
+    it 'should update reduced value when item is removed from array', ->
+      o = new RObject([ new RObject(1), new RObject(2), new RObject(3), new RObject(4) ])
+      result = o.reduce add, new RObject(0)
+      o.splice 1, 1
+      assert.equal result.value(), 8
+
+    it 'should update reduced value when multiple items are removed from array', ->
+      o = new RObject([ new RObject(1), new RObject(2), new RObject(3), new RObject(4) ])
+      result = o.reduce add, new RObject(0)
+      o.splice 1, 2
+      assert.equal result.value(), 5
+
+    it 'should update reduced value when items change', ->
+      val = new RObject(2)
+      o = new RObject([ new RObject(1), val, new RObject(3), new RObject(4) ])
+      result = o.reduce add, new RObject(0)
+      val.set 39
+      assert.equal result.value(), 47
+
+    it 'should update reduced value when given a subproperty', ->
+      o = new RObject([
+        new RObject({ name: 'JJ' })
+        new RObject({ name: 'John' })
+        new RObject({ name: 'Johan' })
+        new RObject({ name: 'Jackie' })
+      ])
+      result = o.reduce (prev, current) ->
+        prev.add current.prop('name').length()
+      , new RObject(0)
+      assert.equal result.value(), 17
+
+    it 'should update reduced value when given subproperty changes', ->
+      name = new RObject 'John'
+      o = new RObject([
+        new RObject({ name: 'JJ' })
+        new RObject({ name: name })
+        new RObject({ name: 'Johan' })
+        new RObject({ name: 'Jackie' })
+      ])
+      result = o.reduce (prev, current) ->
+        prev.add current.prop('name').length()
+      , new RObject(0)
+      name.set 'Johnathan'
+      assert.equal result.value(), 22
+
+  describe 'type: Other', ->
+    everyTypeExcept 'array', (o) ->
+      result = o.reduce ->
+      assert.equal result.value(), null
+
 
 describe '#add()', ->
   it 'should add item and trigger add event', ->

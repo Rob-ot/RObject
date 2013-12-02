@@ -6,14 +6,12 @@ Values are almost never mutated, if you need to say reverse an array you would m
 
 # ToDo
 
-a nice api for grouping events, like .pauseEvents() and later resume to fire the least amount of events needed to get up to date.
+a nice api for grouping events, like .pauseEvents() and later resume to fire the least amount of events needed to get up to date. (coalescence)
 
 A Date library that fires change events when time changes and stuff (simply wrap Moment)
 
 
 _.span
-
-fromObject
 
 2d arrays?
 
@@ -42,7 +40,9 @@ o.prop('a', new RObject('b')) # what happens?!!
 
 don't use at, use index
 
+#default() (sets to given value if source is empty)
 
+map returns an array of RObjects always, is that what we want? (query objects)
 
 solved problems
 types can change but everyone else already has a reference to an object so it can't change, must combine all types into same object
