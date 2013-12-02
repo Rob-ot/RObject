@@ -130,7 +130,7 @@ do ->
         #todo: handle adding non-number types
         switch @_type
           when 'array'
-            index = opts?.at ? @_val.length
+            index = opts?.index ? @_val.length
             if Array.isArray items
               @splice index, 0, items...
             else
@@ -193,7 +193,7 @@ do ->
               continue
 
           if passing.length
-            child.add passing, at: childIndex + 1
+            child.add passing, index: childIndex + 1
 
 
         removeFromChild = (items, {index}) =>

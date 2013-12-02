@@ -575,7 +575,7 @@ describe '#add()', ->
       assert.strictEqual index, 2, 'add event should include index'
       addTriggered = true
 
-    ro.add one, {at: 2}
+    ro.add one, {index: 2}
     assert.equal addTriggered, true
     assert.deepEqual ro.toObject(), [5, 6, 1, 7]
 
@@ -592,7 +592,7 @@ describe '#add()', ->
       assert.strictEqual index, 1, 'add event should include index'
       addsTriggered++
 
-    ro.add [four, five, six, seven], {at: 1}
+    ro.add [four, five, six, seven], {index: 1}
     assert.deepEqual ro.toObject(), [3, 4, 5, 6, 7, 8, 9]
     assert.equal addsTriggered, 1
 
