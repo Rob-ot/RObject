@@ -186,7 +186,7 @@ describe '#splice()', ->
     addCalls = 0
     removeCalls = 0
     add = (items, {index}) ->
-      assert.deepEqual items, nums[2]
+      assert.deepEqual items, [nums[2]]
       assert.strictEqual index, 0
       addCalls++
     remove = (items, {index}) ->
@@ -207,7 +207,7 @@ describe '#splice()', ->
     addCalls = 0
     removeCalls = 0
     add = (items, {index}) ->
-      assert.deepEqual items, nums[3]
+      assert.deepEqual items, [nums[3]]
       assert.strictEqual index, 3
       addCalls++
     remove = (items, {index}) ->
@@ -230,7 +230,7 @@ describe '#splice()', ->
     add = (items, {index}) ->
       addCalls++
     remove = (items, {index}) ->
-      assert.deepEqual items, nums[0]
+      assert.deepEqual items, [nums[0]]
       assert.strictEqual index, 1
       removeCalls++
 
@@ -255,7 +255,7 @@ describe '#splice()', ->
       assert.equal removeCalls, 1, 'remove event should be fired before add event'
       addCalls++
     remove = (items, {index}) ->
-      assert.deepEqual items, nums[1]
+      assert.deepEqual items[0], nums[1]
       assert.strictEqual index, 1
       removeCalls++
 
@@ -555,8 +555,8 @@ describe '#add()', ->
     ro = new RObject([])
     one = new RObject(1)
     addTriggered = false
-    ro.on 'add', (item, {index}) ->
-      assert.strictEqual item, one, 'add event should include added item'
+    ro.on 'add', (items, {index}) ->
+      assert.strictEqual items[0], one, 'add event should include added item'
       assert.strictEqual ro.length().value(), 1, 'array length should be updated by the time add event is triggered'
       assert.strictEqual index, 0, 'add event should include index'
       addTriggered = true
@@ -569,8 +569,8 @@ describe '#add()', ->
     ro = new RObject([new RObject(5), new RObject(6), new RObject(7)])
     one = new RObject(1)
     addTriggered = false
-    ro.on 'add', (item, {index}) ->
-      assert.strictEqual item, one, 'add event should include added item'
+    ro.on 'add', (items, {index}) ->
+      assert.strictEqual items[0], one, 'add event should include added item'
       assert.strictEqual ro.length().value(), 4, 'array length should be updated by the time add event is triggered'
       assert.strictEqual index, 2, 'add event should include index'
       addTriggered = true
@@ -586,8 +586,8 @@ describe '#add()', ->
     five = new RObject(5)
     six = new RObject(6)
     seven = new RObject(7)
-    ro.on 'add', (item, {index}) ->
-      assert.deepEqual item, [four, five, six, seven], 'add event should include added items'
+    ro.on 'add', (items, {index}) ->
+      assert.deepEqual items, [four, five, six, seven], 'add event should include added items'
       assert.strictEqual ro.length().value(), 7, 'array length should be updated by the time add event is triggered'
       assert.strictEqual index, 1, 'add event should include index'
       addsTriggered++

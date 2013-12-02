@@ -1,6 +1,5 @@
 do ->
   factory = (EventEmitter) ->
-
     class RObject extends EventEmitter
       constructor: (val, opts={}) ->
         @set val
@@ -58,42 +57,41 @@ do ->
 
         if arguments.length > 1
           # set property to value
-          @prop(name).set value
+          return @prop(name).set value
 
-        else
-          # need to make a new child to return because when the type of
-          #  this changes to/from a type 'object' we need to change to/from
-          #  the value of that property, so we do that by turning on and off
-          #  a proxy from the actual property to the return of this
+        # need to make a new child to return because when the type of
+        #  this changes to/from a type 'object' we need to change to/from
+        #  the value of that property, so we do that by turning on and off
+        #  a proxy from the actual property to the return of this
 
-          child = new RObject()
+        child = new RObject()
 
-          update = =>
-            switch @_type
-              when 'object'
-                if @_val[name] not instanceof RObject
-                  @_val[name] = new RObject(@_val[name])
+        update = =>
+          switch @_type
+            when 'object'
+              if @_val[name] not instanceof RObject
+                @_val[name] = new RObject(@_val[name])
 
-                source = @_val[name]
+              source = @_val[name]
 
-                updateChild = =>
-                  child.set source.value()
+              updateChild = =>
+                child.set source.value()
 
-                updateParent = =>
-                  source.set child.value()
+              updateParent = =>
+                source.set child.value()
 
-                source.on 'change', updateChild
-                child.on 'change', updateParent
+              source.on 'change', updateChild
+              child.on 'change', updateParent
 
-                updateChild()
+              updateChild()
 
-              else
-                child.set null, disableProxy: true
+            else
+              child.set null
 
-          @on 'change', update
-          update()
+        @on 'change', update
+        update()
 
-          child
+        child
 
 
       combine: (operands..., handler) ->
@@ -149,12 +147,10 @@ do ->
             @_rlength?.set @_val.length
 
             if removed.length
-              itemOrItemsRemoved = if removed.length == 1 then removed[0] else removed
-              @emit 'remove', itemOrItemsRemoved, {index}
+              @emit 'remove', removed, {index}
 
             if itemsToAdd.length
-              itemOrItemsToAdd = if itemsToAdd.length == 1 then itemsToAdd[0] else itemsToAdd
-              @emit 'add', itemOrItemsToAdd, {index}
+              @emit 'add', itemsToAdd, {index}
 
           #todo string
           else
@@ -164,8 +160,6 @@ do ->
         child = new RObject()
 
         addToChild = (items, {index, noListen}) =>
-          items = [items] if !Array.isArray items
-
           # find the nearest preceding item in parent that is also in child
           parentIndex = index
           while (childIndex = child.value().indexOf(@_val[parentIndex])) == -1
@@ -180,9 +174,9 @@ do ->
               =>
                 # console.log @_val.indexOf(item)
                 if passes.value()
-                  addToChild item, index: index + i, noListen: true
+                  addToChild [item], index: index + i, noListen: true
                 else
-                  removeFromChild item, index: index + i
+                  removeFromChild [item], index: index + i
 
 
             passes.on 'change', updatee if !noListen
@@ -197,8 +191,6 @@ do ->
 
 
         removeFromChild = (items, {index}) =>
-          items = [items] if !Array.isArray items
-
           # find the index of the first item removed (if any) that is also in child
           removedIndex = 0
           while (childIndex = child.value().indexOf(items[removedIndex])) == -1
@@ -282,12 +274,12 @@ do ->
               null
 
         # assume add and remove are only called when type is array
-        @on 'remove', (item, {index}) ->
-          numRemoved = if Array.isArray(item) then item.length else 1
-          child.splice index, numRemoved
+        @on 'remove', (items, {index}) ->
+          child.splice index, items.length
 
-        @on 'add', (item) ->
-          child.add transform(item)
+        @on 'add', (items) ->
+          #todo: handle multiple added
+          child.add transform items[0]
 
         @on 'change', update
         update()
