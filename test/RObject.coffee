@@ -68,15 +68,16 @@ describe '#set()', ->
       assert.equal changes, 0
 
   it 'should fire remove with items when changing from an array value', ->
-    o = new RObject([1, 2])
-    removed = []
+    everyType (current) ->
+      o = new RObject([1, 2])
+      removed = []
 
-    o.on 'remove', (removedItems) ->
-      removed.push removedItems
-    o.set 2
+      o.on 'remove', (removedItems) ->
+        removed.push removedItems
+      o.set current
 
-    assert.equal removed.length, 1
-    assert.deepEqual removed[0].map((o)-> o.toObject()), [1, 2]
+      assert.equal removed.length, 1
+      assert.deepEqual removed[0].map((o)-> o.toObject()), [1, 2]
 
 describe '#type()', ->
   it 'should detect the type based on what is passed in', ->
