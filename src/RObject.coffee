@@ -33,9 +33,17 @@ do ->
         val = null if val == undefined # undefined is translated to null
 
         return this if @_val == val # don't fire change event for the same value
+
+        newType = RObject.typeFromNative val
+
+        if @_type == 'array'
+          if newType != 'array'
+            @splice 0, @_val.length
+
+
         @_val = val
 
-        @_type = RObject.typeFromNative @_val
+        @_type = newType
         @_rtype?.set @_type
 
         switch @_type
