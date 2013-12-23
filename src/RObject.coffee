@@ -239,19 +239,26 @@ do ->
 
       reduce: (reducer, initial) ->
         child = new RObject()
+
         if arguments.length == 1
           initial = new RObject()
+
+        listeners = []
+
+        reReduce = =>
+          for listener in listeners
+            listener.target.off listener.event, listener.handler
+
+          child.set @_val.reduce(->
+            result = reducer arguments...
+            result.on 'change', reReduce
+            listeners.push target: result, event: 'change', handler: reReduce
+            result
+          , initial).value()
 
         update = =>
           switch @_type
             when 'array'
-              reReduce = =>
-                child.set @_val.reduce(->
-                  result = reducer arguments...
-                  result.on 'change', reReduce
-                  result
-                , initial).value()
-
               @on 'add', reReduce
               @on 'remove', reReduce
               reReduce()

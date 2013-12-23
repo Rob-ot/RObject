@@ -464,6 +464,7 @@ describe '#filter()', ->
     assert.deepEqual evens.toObject(), null
 
 
+#todo: test event listener removal
 describe '#reduce()', ->
   add = (prev, current) ->
     prev.add current
