@@ -456,8 +456,8 @@ describe '#filter()', ->
       o = new RObject([1, 2, 3, 4, 5, 6])
       evens = o.filter isEven
       o.value()[3].set 11
-      o.value()[3].set 3
-      assert.deepEqual evens.toObject(), [2, 6]
+      o.value()[3].set 4
+      assert.deepEqual evens.toObject(), [2, 4, 6]
 
 
   it 'should handle dynamic type change', ->
