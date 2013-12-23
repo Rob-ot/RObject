@@ -284,9 +284,9 @@ do ->
         @on 'remove', (items, {index}) ->
           child.splice index, items.length
 
-        @on 'add', (items) ->
+        @on 'add', (items, {index}) ->
           #todo: handle multiple added
-          child.add transform items[0]
+          child.add transform(items[0]), {index}
 
         @on 'change', update
         update()

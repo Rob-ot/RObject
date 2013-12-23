@@ -321,6 +321,12 @@ describe '#map()', ->
 
       assert.deepEqual inversed.toObject(), [-1, -3]
 
+    it 'should maintain order of added items', ->
+      ro = new RObject([new RObject(1), new RObject(3)])
+      inversed = ro.map inverse
+      ro.splice 1, 0, new RObject(2)
+      assert.deepEqual inversed.toObject(), [-1, -2, -3]
+
     it 'should only call transform fn once when item is added', ->
       ro = new RObject([new RObject(1)])
       transforms = 0
