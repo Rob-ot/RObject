@@ -299,24 +299,24 @@ describe '#splice()', ->
 
 
 describe '#map()', ->
+  inverse = (item) ->
+    item.inverse()
+
   describe 'type: Array', ->
     it 'should map initial items', ->
       ro = new RObject([new RObject(1), new RObject(2)])
-      inversed = ro.map (item) ->
-        item.inverse()
+      inversed = ro.map inverse
       assert.deepEqual inversed.value().map((i) -> i.value()), [-1, -2]
 
     it 'should map items added later', ->
       ro = new RObject([new RObject(1)])
-      inversed = ro.map (item) ->
-        item.inverse()
+      inversed = ro.map inverse
       ro.add new RObject(2)
       assert.deepEqual inversed.toObject(), [-1, -2]
 
     it 'should remove items from the child when items are removed from the parent', ->
       ro = new RObject([new RObject(1), new RObject(2), new RObject(3)])
-      inversed = ro.map (item) ->
-        item.inverse()
+      inversed = ro.map inverse
       ro.splice 1, 1
 
       assert.deepEqual inversed.toObject(), [-1, -3]
@@ -347,8 +347,7 @@ describe '#map()', ->
   describe 'type: Other', ->
     it 'should return null', ->
       o = new RObject()
-      inversed = o.map (item) ->
-        item.inverse()
+      inversed = o.map inverse
 
       assert.deepEqual inversed.value(), null
 
