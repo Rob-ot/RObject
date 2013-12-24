@@ -68,18 +68,6 @@ describe '#set()', ->
       o.set val
       assert.equal changes, 0
 
-  it 'should fire remove with items when changing from an array value', ->
-    everyType (current) ->
-      o = new RObject([1, 2])
-      removed = []
-
-      o.on 'remove', (removedItems) ->
-        removed.push removedItems
-      o.set current
-
-      assert.equal removed.length, 1
-      assert.deepEqual removed[0].map((o)-> o.toObject()), [1, 2]
-
 describe '#type()', ->
   it 'should detect the type based on what is passed in', ->
     assert.equal 'number', new RObject(8).type().value()
@@ -185,7 +173,7 @@ describe '#inverse()', ->
 # make sure all methods work with multi-adds/removes
 # make sure all methods handle when values change
 # edge case, called with empty and stuff
-# should limit numToRemove to length of array?
+
 
 describe '#splice()', ->
   nums = for i in [0..10]
