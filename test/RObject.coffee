@@ -57,6 +57,7 @@ everyTypeExcept = (blacklist, fn) ->
     if type != blacklist
       fn result, type, value
 
+#todo: make sure length and type are correct when change event is fired
 describe '#set()', ->
   it 'should not fire change event when set to the same value', ->
     o = new RObject()
@@ -132,7 +133,7 @@ describe '#toObject()', ->
       new RObject('foo')
       new RObject(6)
       new RObject(true)
-      new RObject([new RObject(3)])
+      new RObject([3])
       new RObject({
         one: 1
         two: new RObject('2')
@@ -316,31 +317,31 @@ describe '#map()', ->
 
   describe 'type: Array', ->
     it 'should map initial items', ->
-      ro = new RObject([new RObject(1), new RObject(2)])
+      ro = new RObject([1, 2])
       inversed = ro.map inverse
       assert.deepEqual inversed.value().map((i) -> i.value()), [-1, -2]
 
     it 'should map items added later', ->
-      ro = new RObject([new RObject(1)])
+      ro = new RObject([1])
       inversed = ro.map inverse
       ro.add new RObject(2)
       assert.deepEqual inversed.toObject(), [-1, -2]
 
     it 'should remove items from the child when items are removed from the parent', ->
-      ro = new RObject([new RObject(1), new RObject(2), new RObject(3)])
+      ro = new RObject([1, 2, 3])
       inversed = ro.map inverse
       ro.splice 1, 1
 
       assert.deepEqual inversed.toObject(), [-1, -3]
 
     it 'should maintain order of added items', ->
-      ro = new RObject([new RObject(1), new RObject(3)])
+      ro = new RObject([1, 3])
       inversed = ro.map inverse
       ro.splice 1, 0, new RObject(2)
       assert.deepEqual inversed.toObject(), [-1, -2, -3]
 
     it 'should only call transform fn once when item is added', ->
-      ro = new RObject([new RObject(1)])
+      ro = new RObject([1])
       transforms = 0
       inversed = ro.map (item) ->
         transforms++
@@ -374,7 +375,7 @@ describe '#map()', ->
     inversed = ro.map (item) ->
       item.inverse()
 
-    ro.set [new RObject(3)]
+    ro.set [3]
     assert.deepEqual inversed.toObject(), [-3]
     ro.set null
     assert.deepEqual inversed.value(), null
@@ -387,12 +388,12 @@ describe '#filter()', ->
 
   describe 'type: Array', ->
     it 'should filter initial items', ->
-      ro = new RObject([new RObject(4), new RObject(5), new RObject(6)])
+      ro = new RObject([4, 5, 6])
       evens = ro.filter isEven
       assert.deepEqual evens.toObject(), [4, 6]
 
     it 'should filter added items', ->
-      ro = new RObject([new RObject(4), new RObject(5), new RObject(6)])
+      ro = new RObject([4, 5, 6])
       evens = ro.filter isEven
       ro.add new RObject(7)
       assert.deepEqual evens.toObject(), [4, 6]
@@ -400,19 +401,19 @@ describe '#filter()', ->
       assert.deepEqual evens.toObject(), [4, 6, 8]
 
     it 'should filter added items when more than one is added at a time', ->
-      ro = new RObject([new RObject(4), new RObject(5), new RObject(6)])
+      ro = new RObject([4, 5, 6])
       evens = ro.filter isEven
       ro.add [new RObject(7), new RObject(8)]
       assert.deepEqual evens.toObject(), [4, 6, 8]
 
     it 'should filter added items and put them in the correct place when spliced', ->
-      ro = new RObject([new RObject(1), new RObject(2), new RObject(4), new RObject(3), new RObject(3), new RObject(5), new RObject(9), new RObject(12)])
+      ro = new RObject([1, 2, 4, 3, 3, 5, 9, 12])
       evens = ro.filter isEven
       ro.splice 5, 0, new RObject(7), new RObject(8), new RObject(9), new RObject(10)
       assert.deepEqual evens.toObject(), [2, 4, 8, 10, 12]
 
     it 'should filter added items and put them in the correct place when spliced at position 0', ->
-      ro = new RObject([new RObject(3), new RObject(4)])
+      ro = new RObject([3, 4])
       evens = ro.filter isEven
       ro.splice 0, 0, new RObject(2)
       assert.deepEqual evens.toObject(), [2, 4]
@@ -451,7 +452,7 @@ describe '#filter()', ->
 
     it 'should update filter when given boolean changes for dynamically added items', ->
       four = new RObject(4)
-      ro = new RObject([new RObject(2), new RObject(3), new RObject(5), new RObject(6)])
+      ro = new RObject([2, 3, 5, 6])
       evens = ro.filter isEven
       ro.splice 2, 0, four
       four.set 4
@@ -475,7 +476,7 @@ describe '#filter()', ->
   it 'should handle dynamic type change', ->
     o = new RObject()
     evens = o.filter isEven
-    o.set [new RObject(3), new RObject(4)]
+    o.set [3, 4]
     assert.deepEqual evens.toObject(), [4]
     o.set null
     assert.deepEqual evens.toObject(), null
@@ -584,7 +585,7 @@ describe '#add()', ->
     assert.deepEqual ro.value(), [one]
 
   it 'should add at the index if one is specified', ->
-    ro = new RObject([new RObject(5), new RObject(6), new RObject(7)])
+    ro = new RObject([5, 6, 7])
     one = new RObject(1)
     addTriggered = false
     ro.on 'add', (items, {index}) ->
@@ -598,7 +599,7 @@ describe '#add()', ->
     assert.deepEqual ro.toObject(), [5, 6, 1, 7]
 
   it 'should allow adding multiple items via Array', ->
-    ro = new RObject([new RObject(3), new RObject(8), new RObject(9)])
+    ro = new RObject([3, 8, 9])
     addsTriggered = 0
     four = new RObject(4)
     five = new RObject(5)
@@ -802,7 +803,7 @@ describe '#at()', ->
 
   it 'should update item at index when index is changed', ->
     index = new RObject(1)
-    a = new RObject([new RObject(1), new RObject(2), new RObject(3)])
+    a = new RObject([1, 2, 3])
     atIndex = a.at(index)
     assert.equal atIndex.value(), 2
     index.set 2
