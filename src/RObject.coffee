@@ -286,7 +286,9 @@ do ->
 
         @on 'add', (items, {index}) ->
           #todo: handle multiple added
-          child.add transform(items[0]), {index}
+          result = transform items[0]
+          rResult = if result instanceof RObject then result else new RObject(result)
+          child.add rResult, {index}
 
         @on 'change', update
         update()

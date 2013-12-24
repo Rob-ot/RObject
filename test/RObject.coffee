@@ -379,6 +379,28 @@ describe '#map()', ->
       assert.deepEqual inversed.toObject(), [-2]
       assert.equal cbs, 1
 
+    it 'should make returned values into RObjects and trigger add event with it', ->
+      o = new RObject([1, 3])
+
+      inversed = o.map (item) ->
+        assert.equal item instanceof RObject, true
+        -item.value()
+
+      added = []
+      inversed.on 'add', (items) ->
+        added.push items
+
+      o.add new RObject(2)
+
+      assert.equal inversed.length().value(), 3
+      for item, i in inversed
+        assert.equal item instanceof RObject, true
+        assert.equal item.value(), -(i + 1)
+
+      assert.equal added.length, 1
+      assert.equal added[0][0] instanceof RObject, true
+
+
   describe 'type: Other', ->
     it 'should return null', ->
       o = new RObject()
