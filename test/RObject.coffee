@@ -174,7 +174,6 @@ describe '#inverse()', ->
 # make sure all methods handle when values change
 # edge case, called with empty and stuff
 
-
 describe '#splice()', ->
   nums = for i in [0..10]
     new RObject i
@@ -292,10 +291,39 @@ describe '#splice()', ->
     ro.removeListener 'add', add
     ro.removeListener 'remove', remove
 
+  it 'should fire with the actual number of items removed when splice is called with more', ->
+    o = new RObject([1, 2, 3])
+    removed = []
+    removedIndex = null
+    o.on 'remove', (items, {index}) ->
+      removed.push items
+      removedIndex = index
+
+    o.splice 1, 12
+
+    assert.equal removed.length, 1
+    assert.equal removedIndex, 1
+    assert.equal removed[0].length, 2
+
+  it 'should not fire any events when splice is called with no changes', ->
+    o = new RObject([1, 2, 3])
+
+    removed = []
+    o.on 'remove', (items) ->
+      removed.push items
+
+    added = []
+    o.on 'add', (items) ->
+      added.push items
+
+    o.splice 1, 0
+
+    assert.equal removed.length, 0
+    assert.equal added.length, 0
+
   #todo: change events
   #todo: negative number indexes
   #todo: edge cases
-
 
 
 
