@@ -312,6 +312,18 @@ do ->
 
         child
 
+      subscribe: (handler) ->
+        update = =>
+          if @_type == 'array'
+            for item, index in @_val
+              handler item, {index}
+
+        @on 'add', (added, {index}) ->
+          for item, i in added
+            handler item, {index: index + i}
+
+        @on 'change', update
+        update()
 
       subtract: (operand) ->
         @combine operand, (aVal, bVal) ->

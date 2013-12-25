@@ -326,7 +326,7 @@ describe '#splice()', ->
   #todo: edge cases
 
 
-
+#todo: rerun fn if an RObject wasnt returned?
 describe '#map()', ->
   inverse = (item) ->
     item.inverse()
@@ -605,6 +605,81 @@ describe '#reduce()', ->
     everyTypeExcept 'array', (o) ->
       result = o.reduce ->
       assert.equal result.value(), null
+
+
+describe '#subscribe()', ->
+  describe 'type: Array', ->
+    it 'should call fn for every item that is already in the array', ->
+      o = new RObject([1, 2, 3])
+      calls = []
+      o.subscribe (item) ->
+        calls.push item
+
+      assert.equal calls.length, 3
+      assert.deepEqual (calls.map((o) -> o.toObject())), [1, 2, 3]
+
+    it 'should call fn for items dynamically added', ->
+      o = new RObject([])
+      calls = []
+      o.subscribe (item) ->
+        calls.push item
+
+      o.splice 0, 0, new RObject(1), new RObject(2), new RObject(3)
+
+      assert.equal calls.length, 3
+      assert.deepEqual (calls.map((o) -> o.toObject())), [1, 2, 3]
+
+    it 'should include indexes of items added', ->
+      o = new RObject([1, 2, 4, 5])
+      calls = []
+      indexes = []
+      o.subscribe (item, {index}) ->
+        calls.push item
+        indexes.push index
+
+      o.splice 1, 1, new RObject(2), new RObject(3)
+
+      assert.equal calls.length, 6
+      assert.deepEqual (calls.map((o) -> o.toObject())), [1, 2, 4, 5, 2, 3]
+      assert.deepEqual indexes, [0, 1, 2, 3, 1, 2]
+
+    it 'should call fn when type is dynamically changed to an array', ->
+      everyTypeExcept 'array', (o) ->
+        calls = []
+        indexes = []
+        o.subscribe (item, {index}) ->
+          calls.push item
+          indexes.push index
+
+        o.set [1, 2]
+        assert.equal calls.length, 2
+        assert.deepEqual indexes, [0, 1]
+
+    it 'should call fn when type is dynamically changed to array from another array', ->
+      o = new RObject([1, 2])
+
+      calls = []
+      indexes = []
+      o.subscribe (item, {index}) ->
+        calls.push item
+        indexes.push index
+
+      assert.equal calls.length, 2
+
+      o.set [3, 4]
+
+      assert.deepEqual calls.map((o) -> o.toObject()), [1, 2, 3, 4]
+      assert.deepEqual indexes, [0, 1, 0, 1]
+
+  describe 'type: Other', ->
+    it 'should never call fn unless type is array', ->
+      everyTypeExcept 'array', (other) ->
+        o = new RObject
+        calls = 0
+        o.subscribe ->
+          calls++
+        o.set other
+        assert.equal calls, 0
 
 
 describe '#add()', ->
