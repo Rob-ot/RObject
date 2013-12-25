@@ -70,45 +70,45 @@ describe '#set()', ->
 
 describe '#type()', ->
   it 'should detect the type based on what is passed in', ->
-    assert.equal 'number', new RObject(8).type().value()
-    assert.equal 'string', new RObject('8').type().value()
-    assert.equal 'boolean', new RObject(true).type().value()
-    assert.equal 'empty', new RObject(null).type().value()
-    assert.equal 'empty', new RObject(undefined).type().value()
-    assert.equal 'object', new RObject({}).type().value()
-    assert.equal 'array', new RObject([]).type().value()
+    assert.equal new RObject(8).type().value(), 'number'
+    assert.equal new RObject('8').type().value(), 'string'
+    assert.equal new RObject(true).type().value(), 'boolean'
+    assert.equal new RObject(null).type().value(), 'empty'
+    assert.equal new RObject(undefined).type().value(), 'empty'
+    assert.equal new RObject({}).type().value(), 'object'
+    assert.equal new RObject([]).type().value(), 'array'
 
 describe '#value()', ->
   it 'should return the same item rObject was created with', ->
     for item in [8, '8', true, null]
-      assert.strictEqual item, new RObject(item).value()
+      assert.strictEqual new RObject(item).value(), item
 
   it 'should modify object passed in', ->
     original = {a: 'aee'}
-    r = new RObject(original)
-    r.prop 'a', 'lol'
-    r.prop 'b', 'bbq'
+    o = new RObject(original)
+    o.prop 'a', 'lol'
+    o.prop 'b', 'bbq'
     assert.equal original.a.value(), 'lol'
     assert.strictEqual original.b.value(), 'bbq'
 
   it 'should translate undefined to null', ->
-    assert.strictEqual null, new RObject(null).value()
-    assert.strictEqual null, new RObject(undefined).value()
+    assert.strictEqual new RObject(null).value(), null
+    assert.strictEqual new RObject(undefined).value(), null
 
   it 'should only convert to native object shallow', ->
-    assert.equal true, new RObject({ five: new RObject(5) }).value().five instanceof RObject
-    assert.equal 5, new RObject({ five: new RObject(5) }).value().five.value()
-    assert.equal true, new RObject([ new RObject(5) ]).value()[0] instanceof RObject
-    assert.equal 5, new RObject([ new RObject(5) ]).value()[0].value()
+    assert.equal new RObject({ five: new RObject(5) }).value().five instanceof RObject, true
+    assert.equal new RObject({ five: new RObject(5) }).value().five.value(), 5
+    assert.equal new RObject([ new RObject(5) ]).value()[0] instanceof RObject, true
+    assert.equal new RObject([ new RObject(5) ]).value()[0].value(), 5
 
   it 'should give value of values added later', ->
     o = new RObject({})
     o.prop('cat', 'mouse')
-    assert.equal 'mouse', o.value().cat.value()
+    assert.equal o.value().cat.value(), 'mouse'
 
     o = new RObject([])
     o.splice 0, 0, new RObject(4)
-    assert.equal 4, o.value()[0].value()
+    assert.equal o.value()[0].value(), 4
 
 describe '#toObject()', ->
   it 'should give native value for simple types', ->
@@ -131,34 +131,47 @@ describe '#toObject()', ->
         })
       })
     ])
-    assert.deepEqual complex.toObject(), ['foo', 6, true, [3], {one: '1', two: '2', more: {a: 'aee', b: 'bee'}}]
+    assert.deepEqual complex.toObject(), [
+      'foo'
+      6
+      true
+      [3]
+      {
+        one: '1'
+        two: '2'
+        more: {
+          a: 'aee'
+          b: 'bee'
+        }
+      }
+    ]
 
   it 'should give native value for items that have had a property accessed', ->
     o = new RObject({ d: false })
     o.prop 'd'
-    assert.deepEqual { d: false }, o.toObject()
+    assert.deepEqual o.toObject(), { d: false }
 
 describe '#inverse()', ->
   describe 'type: boolean', ->
     it 'should inverse value', ->
-      rs = new RObject(false)
-      inverse = rs.inverse()
+      o = new RObject(false)
+      inverse = o.inverse()
       assert.strictEqual inverse.value(), true
-      rs.set true
+      o.set true
       assert.strictEqual inverse.value(), false
 
   describe 'type: number', ->
     it 'should inverse', ->
-      rs = new RObject(8)
-      inverse = rs.inverse()
+      o = new RObject(8)
+      inverse = o.inverse()
       assert.strictEqual inverse.value(), -8
-      rs.set -8
+      o.set -8
       assert.strictEqual inverse.value(), 8
 
   describe 'type: other', ->
     it 'should noop', ->
-      rs = new RObject('8')
-      inverse = rs.inverse()
+      o = new RObject('8')
+      inverse = o.inverse()
       assert.strictEqual inverse.value(), '8'
 
   it 'should handle dynamic type change', ->
@@ -178,9 +191,9 @@ describe '#splice()', ->
   nums = for i in [0..10]
     new RObject i
 
-  ro = new RObject([])
-  ro.splice 0, 0, nums[0], nums[1]
-  assert.deepEqual ro.toObject(), [0, 1]
+  o = new RObject([])
+  o.splice 0, 0, nums[0], nums[1]
+  assert.deepEqual o.toObject(), [0, 1]
 
   it 'should add to beginning', ->
     addCalls = 0
@@ -192,16 +205,16 @@ describe '#splice()', ->
     remove = (items, {index}) ->
       removeCalls++
 
-    ro.on 'add', add
-    ro.on 'remove', remove
+    o.on 'add', add
+    o.on 'remove', remove
 
-    ro.splice 0, 0, nums[2]
-    assert.deepEqual ro.toObject(), [2, 0, 1]
+    o.splice 0, 0, nums[2]
+    assert.deepEqual o.toObject(), [2, 0, 1]
     assert.equal addCalls, 1
     assert.equal removeCalls, 0
 
-    ro.removeListener 'add', add
-    ro.removeListener 'remove', remove
+    o.removeListener 'add', add
+    o.removeListener 'remove', remove
 
   it 'should add to end', ->
     addCalls = 0
@@ -213,16 +226,16 @@ describe '#splice()', ->
     remove = (items, {index}) ->
       removeCalls++
 
-    ro.on 'add', add
-    ro.on 'remove', remove
+    o.on 'add', add
+    o.on 'remove', remove
 
-    ro.splice 3, 0, nums[3]
-    assert.deepEqual ro.toObject(), [2, 0, 1, 3]
+    o.splice 3, 0, nums[3]
+    assert.deepEqual o.toObject(), [2, 0, 1, 3]
     assert.equal addCalls, 1
     assert.equal removeCalls, 0
 
-    ro.removeListener 'add', add
-    ro.removeListener 'remove', remove
+    o.removeListener 'add', add
+    o.removeListener 'remove', remove
 
   it 'should remove 1 at index', ->
     addCalls = 0
@@ -234,17 +247,17 @@ describe '#splice()', ->
       assert.strictEqual index, 1
       removeCalls++
 
-    ro.on 'add', add
-    ro.on 'remove', remove
+    o.on 'add', add
+    o.on 'remove', remove
 
-    removed = ro.splice 1, 1
-    assert.deepEqual ro.toObject(), [2, 1, 3]
+    removed = o.splice 1, 1
+    assert.deepEqual o.toObject(), [2, 1, 3]
     # assert.deepEqual removed, []
     assert.equal addCalls, 0
     assert.equal removeCalls, 1
 
-    ro.removeListener 'add', add
-    ro.removeListener 'remove', remove
+    o.removeListener 'add', add
+    o.removeListener 'remove', remove
 
   it 'should remove and add at the index', ->
     addCalls = 0
@@ -259,16 +272,16 @@ describe '#splice()', ->
       assert.strictEqual index, 1
       removeCalls++
 
-    ro.on 'add', add
-    ro.on 'remove', remove
+    o.on 'add', add
+    o.on 'remove', remove
 
-    ro.splice 1, 1, nums[4], nums[5], nums[6], nums[7]
-    assert.deepEqual ro.toObject(), [2, 4, 5, 6, 7, 3]
+    o.splice 1, 1, nums[4], nums[5], nums[6], nums[7]
+    assert.deepEqual o.toObject(), [2, 4, 5, 6, 7, 3]
     assert.equal addCalls, 1
     assert.equal removeCalls, 1
 
-    ro.removeListener 'add', add
-    ro.removeListener 'remove', remove
+    o.removeListener 'add', add
+    o.removeListener 'remove', remove
 
   it 'should remove all', ->
     addCalls = 0
@@ -280,16 +293,16 @@ describe '#splice()', ->
       assert.strictEqual index, 0
       removeCalls++
 
-    ro.on 'add', add
-    ro.on 'remove', remove
+    o.on 'add', add
+    o.on 'remove', remove
 
-    ro.splice 0, 6
-    assert.deepEqual ro.toObject(), []
+    o.splice 0, 6
+    assert.deepEqual o.toObject(), []
     assert.equal addCalls, 0
     assert.equal removeCalls, 1
 
-    ro.removeListener 'add', add
-    ro.removeListener 'remove', remove
+    o.removeListener 'add', add
+    o.removeListener 'remove', remove
 
   it 'should fire with the actual number of items removed when splice is called with more', ->
     o = new RObject([1, 2, 3])
@@ -324,7 +337,7 @@ describe '#splice()', ->
   #todo: change events
   #todo: negative number indexes
   #todo: edge cases
-
+  #todo: returns items removed
 
 #todo: rerun fn if an RObject wasnt returned?
 describe '#map()', ->
@@ -333,45 +346,45 @@ describe '#map()', ->
 
   describe 'type: Array', ->
     it 'should map initial items', ->
-      ro = new RObject([1, 2])
-      inversed = ro.map inverse
+      o = new RObject([1, 2])
+      inversed = o.map inverse
       assert.deepEqual inversed.value().map((i) -> i.value()), [-1, -2]
 
     it 'should map items added later', ->
-      ro = new RObject([1])
-      inversed = ro.map inverse
-      ro.add new RObject(2)
+      o = new RObject([1])
+      inversed = o.map inverse
+      o.add new RObject(2)
       assert.deepEqual inversed.toObject(), [-1, -2]
 
     it 'should remove items from the child when items are removed from the parent', ->
-      ro = new RObject([1, 2, 3])
-      inversed = ro.map inverse
-      ro.splice 1, 1
+      o = new RObject([1, 2, 3])
+      inversed = o.map inverse
+      o.splice 1, 1
 
       assert.deepEqual inversed.toObject(), [-1, -3]
 
     it 'should maintain order of added items', ->
-      ro = new RObject([1, 3])
-      inversed = ro.map inverse
-      ro.splice 1, 0, new RObject(2)
+      o = new RObject([1, 3])
+      inversed = o.map inverse
+      o.splice 1, 0, new RObject(2)
       assert.deepEqual inversed.toObject(), [-1, -2, -3]
 
     it 'should only call transform fn once when item is added', ->
-      ro = new RObject([1])
+      o = new RObject([1])
       transforms = 0
-      inversed = ro.map (item) ->
+      inversed = o.map (item) ->
         transforms++
         item.inverse()
 
       transforms = 0
-      ro.add new RObject(2)
+      o.add new RObject(2)
       assert.equal transforms, 1
 
     it 'should update when parent value changes and not rerun transform fn', ->
       cbs = 0
       num = new RObject(1)
-      ro = new RObject([num])
-      inversed = ro.map (item) ->
+      o = new RObject([num])
+      inversed = o.map (item) ->
         cbs++
         item.inverse()
 
@@ -409,13 +422,13 @@ describe '#map()', ->
       assert.deepEqual inversed.value(), null
 
   it 'should handle dynamic type change', ->
-    ro = new RObject()
-    inversed = ro.map (item) ->
+    o = new RObject()
+    inversed = o.map (item) ->
       item.inverse()
 
-    ro.set [3]
+    o.set [3]
     assert.deepEqual inversed.toObject(), [-3]
-    ro.set null
+    o.set null
     assert.deepEqual inversed.value(), null
 
 
@@ -426,34 +439,34 @@ describe '#filter()', ->
 
   describe 'type: Array', ->
     it 'should filter initial items', ->
-      ro = new RObject([4, 5, 6])
-      evens = ro.filter isEven
+      o = new RObject([4, 5, 6])
+      evens = o.filter isEven
       assert.deepEqual evens.toObject(), [4, 6]
 
     it 'should filter added items', ->
-      ro = new RObject([4, 5, 6])
-      evens = ro.filter isEven
-      ro.add new RObject(7)
+      o = new RObject([4, 5, 6])
+      evens = o.filter isEven
+      o.add new RObject(7)
       assert.deepEqual evens.toObject(), [4, 6]
-      ro.add new RObject(8)
+      o.add new RObject(8)
       assert.deepEqual evens.toObject(), [4, 6, 8]
 
     it 'should filter added items when more than one is added at a time', ->
-      ro = new RObject([4, 5, 6])
-      evens = ro.filter isEven
-      ro.add [new RObject(7), new RObject(8)]
+      o = new RObject([4, 5, 6])
+      evens = o.filter isEven
+      o.add [new RObject(7), new RObject(8)]
       assert.deepEqual evens.toObject(), [4, 6, 8]
 
     it 'should filter added items and put them in the correct place when spliced', ->
-      ro = new RObject([1, 2, 4, 3, 3, 5, 9, 12])
-      evens = ro.filter isEven
-      ro.splice 5, 0, new RObject(7), new RObject(8), new RObject(9), new RObject(10)
+      o = new RObject([1, 2, 4, 3, 3, 5, 9, 12])
+      evens = o.filter isEven
+      o.splice 5, 0, new RObject(7), new RObject(8), new RObject(9), new RObject(10)
       assert.deepEqual evens.toObject(), [2, 4, 8, 10, 12]
 
     it 'should filter added items and put them in the correct place when spliced at position 0', ->
-      ro = new RObject([3, 4])
-      evens = ro.filter isEven
-      ro.splice 0, 0, new RObject(2)
+      o = new RObject([3, 4])
+      evens = o.filter isEven
+      o.splice 0, 0, new RObject(2)
       assert.deepEqual evens.toObject(), [2, 4]
 
     it 'should remove items that are removed from the source', ->
@@ -471,9 +484,9 @@ describe '#filter()', ->
       assert.deepEqual evens.toObject(), [4, 6]
 
     it 'should always call back with an RObject', ->
-      ro = new RObject([3])
+      o = new RObject([3])
       isRObject = false
-      evens = ro.filter (val) ->
+      evens = o.filter (val) ->
         isRObject = val instanceof RObject
         new RObject(true)
 
@@ -481,8 +494,8 @@ describe '#filter()', ->
 
     it 'should update filter when given boolean changes', ->
       first = new RObject(3)
-      ro = new RObject([first])
-      evens = ro.filter isEven
+      o = new RObject([first])
+      evens = o.filter isEven
       first.set 4
       assert.deepEqual evens.toObject(), [4]
       first.set 3
@@ -490,9 +503,9 @@ describe '#filter()', ->
 
     it 'should update filter when given boolean changes for dynamically added items', ->
       four = new RObject(4)
-      ro = new RObject([2, 3, 5, 6])
-      evens = ro.filter isEven
-      ro.splice 2, 0, four
+      o = new RObject([2, 3, 5, 6])
+      evens = o.filter isEven
+      o.splice 2, 0, four
       four.set 4
       assert.deepEqual evens.toObject(), [2, 4, 6]
       four.set 3
@@ -684,94 +697,94 @@ describe '#subscribe()', ->
 
 describe '#add()', ->
   it 'should add item and trigger add event', ->
-    ro = new RObject([])
+    o = new RObject([])
     one = new RObject(1)
     addTriggered = false
-    ro.on 'add', (items, {index}) ->
+    o.on 'add', (items, {index}) ->
       assert.strictEqual items[0], one, 'add event should include added item'
-      assert.strictEqual ro.length().value(), 1, 'array length should be updated by the time add event is triggered'
+      assert.strictEqual o.length().value(), 1, 'array length should be updated by the time add event is triggered'
       assert.strictEqual index, 0, 'add event should include index'
       addTriggered = true
 
-    ro.add one
+    o.add one
     assert.equal addTriggered, true
-    assert.deepEqual ro.value(), [one]
+    assert.deepEqual o.value(), [one]
 
   it 'should add at the index if one is specified', ->
-    ro = new RObject([5, 6, 7])
+    o = new RObject([5, 6, 7])
     one = new RObject(1)
     addTriggered = false
-    ro.on 'add', (items, {index}) ->
+    o.on 'add', (items, {index}) ->
       assert.strictEqual items[0], one, 'add event should include added item'
-      assert.strictEqual ro.length().value(), 4, 'array length should be updated by the time add event is triggered'
+      assert.strictEqual o.length().value(), 4, 'array length should be updated by the time add event is triggered'
       assert.strictEqual index, 2, 'add event should include index'
       addTriggered = true
 
-    ro.add one, {index: 2}
+    o.add one, {index: 2}
     assert.equal addTriggered, true
-    assert.deepEqual ro.toObject(), [5, 6, 1, 7]
+    assert.deepEqual o.toObject(), [5, 6, 1, 7]
 
   it 'should allow adding multiple items via Array', ->
-    ro = new RObject([3, 8, 9])
+    o = new RObject([3, 8, 9])
     addsTriggered = 0
     four = new RObject(4)
     five = new RObject(5)
     six = new RObject(6)
     seven = new RObject(7)
-    ro.on 'add', (items, {index}) ->
+    o.on 'add', (items, {index}) ->
       assert.deepEqual items, [four, five, six, seven], 'add event should include added items'
-      assert.strictEqual ro.length().value(), 7, 'array length should be updated by the time add event is triggered'
+      assert.strictEqual o.length().value(), 7, 'array length should be updated by the time add event is triggered'
       assert.strictEqual index, 1, 'add event should include index'
       addsTriggered++
 
-    ro.add [four, five, six, seven], {index: 1}
-    assert.deepEqual ro.toObject(), [3, 4, 5, 6, 7, 8, 9]
+    o.add [four, five, six, seven], {index: 1}
+    assert.deepEqual o.toObject(), [3, 4, 5, 6, 7, 8, 9]
     assert.equal addsTriggered, 1
 
 describe '#add()', ->
-  rn1 = new RObject(5)
-  rn2 = new RObject(6)
-  result = rn1.add(rn2)
+  o1 = new RObject(5)
+  o2 = new RObject(6)
+  result = o1.add(o2)
   assert.strictEqual result.value(), 11
-  rn1.set 12
+  o1.set 12
   assert.strictEqual result.value(), 18, "it should update when first value is changed"
-  rn2.set 33
+  o2.set 33
   assert.strictEqual result.value(), 45, "it should update when second value is changed"
   assert.equal result instanceof RObject, true, "it should return an RObject"
 
 
 describe '#subtract()', ->
-  rn1 = new RObject(5)
-  rn2 = new RObject(6)
-  result = rn1.subtract(rn2)
+  o1 = new RObject(5)
+  o2 = new RObject(6)
+  result = o1.subtract(o2)
   assert.strictEqual result.value(), -1, "it should subtract the initial values"
-  rn1.set 12
+  o1.set 12
   assert.strictEqual result.value(), 6, "it should update when first value is changed"
-  rn2.set 33
+  o2.set 33
   assert.strictEqual result.value(), -21, "it should update when second value is changed"
   assert.equal result instanceof RObject, true, "it should return an RObject"
 
 
 describe '#multiply()', ->
-  rn1 = new RObject(5)
-  rn2 = new RObject(6)
-  result = rn1.multiply(rn2)
+  o1 = new RObject(5)
+  o2 = new RObject(6)
+  result = o1.multiply(o2)
   assert.strictEqual result.value(), 30, "it should multiply the initial values"
-  rn1.set 12
+  o1.set 12
   assert.strictEqual result.value(), 72, "it should update when first value is changed"
-  rn2.set 33
+  o2.set 33
   assert.strictEqual result.value(), 396, "it should update when second value is changed"
   assert.equal result instanceof RObject, true, "it should return an RObject"
 
 
 describe '#divide()', ->
-  rn1 = new RObject(-12)
-  rn2 = new RObject(6)
-  result = rn1.divide(rn2)
+  o1 = new RObject(-12)
+  o2 = new RObject(6)
+  result = o1.divide(o2)
   assert.strictEqual result.value(), -2, "it should divide the initial values"
-  rn1.set 36
+  o1.set 36
   assert.strictEqual result.value(), 6, "it should update when first value is changed"
-  rn2.set 3
+  o2.set 3
   assert.strictEqual result.value(), 12, "it should update when second value is changed"
   assert.equal result instanceof RObject, true, "it should return an RObject"
 
@@ -781,69 +794,69 @@ describe '#divide()', ->
 
 
 describe '#mod()', ->
-  rn1 = new RObject(1046)
-  rn2 = new RObject(100)
-  result = rn1.mod(rn2)
+  o1 = new RObject(1046)
+  o2 = new RObject(100)
+  result = o1.mod(o2)
   assert.strictEqual result.value(), 46, "it should mod the initial values"
-  rn1.set 1073
+  o1.set 1073
   assert.strictEqual result.value(), 73, "it should update when first value is changed"
-  rn2.set 110
+  o2.set 110
   assert.strictEqual result.value(), 83, "it should update when second value is changed"
   assert.equal result instanceof RObject, true, "it should return an RObject"
 
 
 describe '#greaterThan()', ->
-  rn1 = new RObject(8)
-  rn2 = new RObject(6)
-  result = rn1.greaterThan(rn2)
+  o1 = new RObject(8)
+  o2 = new RObject(6)
+  result = o1.greaterThan(o2)
   assert.strictEqual result.value(), true, "it should test the initial values"
-  rn1.set 3
+  o1.set 3
   assert.strictEqual result.value(), false, "it should update when first value is changed"
-  rn2.set -5
+  o2.set -5
   assert.strictEqual result.value(), true, "it should update when second value is changed"
-  rn1.set -5
+  o1.set -5
   assert.strictEqual result.value(), false, "equal numbers should fail the test"
   assert.equal result instanceof RObject, true, "it should return an RObject"
 
 
 describe '#greaterThanOrEqual()', ->
-  rn1 = new RObject(8)
-  rn2 = new RObject(6)
-  result = rn1.greaterThanOrEqual(rn2)
+  o1 = new RObject(8)
+  o2 = new RObject(6)
+  result = o1.greaterThanOrEqual(o2)
   assert.strictEqual result.value(), true, "it should test the initial values"
-  rn1.set 3
+  o1.set 3
   assert.strictEqual result.value(), false, "it should update when first value is changed"
-  rn2.set -5
+  o2.set -5
   assert.strictEqual result.value(), true, "it should update when second value is changed"
-  rn1.set -5
+  o1.set -5
   assert.strictEqual result.value(), true, "equal numbers should pass the test"
   assert.equal result instanceof RObject, true, "it should return an RObject"
 
 
 describe '#lessThan()', ->
-  rn1 = new RObject(8)
-  rn2 = new RObject(6)
-  result = rn1.lessThan(rn2)
+  o1 = new RObject(8)
+  o2 = new RObject(6)
+  result = o1.lessThan(o2)
   assert.strictEqual result.value(), false, "it should test the initial values"
-  rn1.set 3
+  o1.set 3
   assert.strictEqual result.value(), true, "it should update when first value is changed"
-  rn2.set -5
+  o2.set -5
   assert.strictEqual result.value(), false, "it should update when second value is changed"
-  rn1.set -5
+  o1.set -5
   assert.strictEqual result.value(), false, "equal numbers should fail the test"
   assert.equal result instanceof RObject, true, "it should return an RObject"
 
 
 describe '#lessThanOrEqual()', ->
-  rn1 = new RObject(8)
-  rn2 = new RObject(6)
-  result = rn1.lessThanOrEqual(rn2)
+  o1 = new RObject(8)
+  o2 = new RObject(6)
+  result = o1.lessThanOrEqual(o2)
   assert.strictEqual result.value(), false, "it should test the initial values"
-  rn1.set 3
+  o1.set 3
   assert.strictEqual result.value(), true, "it should update when first value is changed"
-  rn2.set -5
+  o2.set -5
   assert.strictEqual result.value(), false, "it should update when second value is changed"
-  rn1.set -5
+  o1.set -5
   assert.strictEqual result.value(), true, "equal numbers should pass the test"
   assert.equal result instanceof RObject, true, "it should return an RObject"
 
@@ -852,47 +865,47 @@ describe '#lessThanOrEqual()', ->
 #todo: array concat
 describe '#concat()', ->
   it 'should concat the initial values', ->
-    rs1 = new RObject('foo')
-    rs2 = new RObject('bar')
-    assert.strictEqual rs1.concat(rs2).value(), 'foobar'
+    o1 = new RObject('foo')
+    o2 = new RObject('bar')
+    assert.strictEqual o1.concat(o2).value(), 'foobar'
 
   it 'should return an RObject', ->
-    rs1 = new RObject('foo')
-    rs2 = new RObject('bar')
-    assert.equal rs1.concat(rs2) instanceof RObject, true
+    o1 = new RObject('foo')
+    o2 = new RObject('bar')
+    assert.equal o1.concat(o2) instanceof RObject, true
 
   it 'should update concated value when either value changes', ->
-    rs1 = new RObject('foo')
-    rs2 = new RObject('')
-    result = rs1.concat(rs2)
-    rs2.set 'bar'
+    o1 = new RObject('foo')
+    o2 = new RObject('')
+    result = o1.concat(o2)
+    o2.set 'bar'
     assert.strictEqual result.value(), 'foobar'
-    rs1.set 'baz'
+    o1.set 'baz'
     assert.strictEqual result.value(), 'bazbar'
 
 describe '#indexOf()', ->
   it 'should have initial index value', ->
-    rs1 = new RObject('foobarbaz')
-    rs2 = new RObject('bar')
-    assert.strictEqual rs1.indexOf(rs2).value(), 3
+    o1 = new RObject('foobarbaz')
+    o2 = new RObject('bar')
+    assert.strictEqual o1.indexOf(o2).value(), 3
 
   it 'should return an RObject', ->
-    rs1 = new RObject('foobarbaz')
-    rs2 = new RObject('bar')
-    assert.equal rs1.indexOf(rs2) instanceof RObject, true
+    o1 = new RObject('foobarbaz')
+    o2 = new RObject('bar')
+    assert.equal o1.indexOf(o2) instanceof RObject, true
 
   it 'should give -1 for not found', ->
-    rs1 = new RObject('foobarbaz')
-    rs2 = new RObject('zing')
-    assert.strictEqual rs1.indexOf(rs2).value(), -1
+    o1 = new RObject('foobarbaz')
+    o2 = new RObject('zing')
+    assert.strictEqual o1.indexOf(o2).value(), -1
 
   it 'should update index when either value changes', ->
-    rs1 = new RObject('barbaz')
-    rs2 = new RObject('bar')
-    result = rs1.indexOf(rs2)
-    rs1.set 'foobarbaz'
+    o1 = new RObject('barbaz')
+    o2 = new RObject('bar')
+    result = o1.indexOf(o2)
+    o1.set 'foobarbaz'
     assert.strictEqual result.value(), 3
-    rs2.set 'arb'
+    o2.set 'arb'
     assert.strictEqual result.value(), 4
 
 describe '#at()', ->
@@ -927,23 +940,23 @@ describe '#at()', ->
 describe '#prop()', ->
   describe 'type: Object', ->
     it 'should allow getting properties of passed in the constructor', ->
-      ro = new RObject { eight: '8', nine: new RObject('9') }
-      assert.equal '8', ro.prop('eight').value()
-      assert.equal '9', ro.prop('nine').value()
+      o = new RObject { eight: '8', nine: new RObject('9') }
+      assert.equal '8', o.prop('eight').value()
+      assert.equal '9', o.prop('nine').value()
 
     it 'should allow setting properties and getting them back', ->
-      ro = new RObject {}
-      ro.prop 'great', 'job'
-      assert.equal 'job', ro.prop('great').value()
+      o = new RObject {}
+      o.prop 'great', 'job'
+      assert.equal 'job', o.prop('great').value()
 
     it 'should give empty when accessing unset property', ->
-      ro = new RObject {}
-      assert.strictEqual null, ro.prop('lol').value()
+      o = new RObject {}
+      assert.strictEqual null, o.prop('lol').value()
 
     it 'should set property to empty when set to undefined', ->
-      ro = new RObject {}
-      ro.prop 'great', undefined
-      assert.strictEqual null, ro.prop('great').value()
+      o = new RObject {}
+      o.prop 'great', undefined
+      assert.strictEqual null, o.prop('great').value()
 
   describe 'type: Other', ->
     it 'should give empty', ->
