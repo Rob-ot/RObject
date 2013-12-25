@@ -68,6 +68,25 @@ describe '#set()', ->
       o.set val
       assert.equal changes, 0
 
+  it 'should update length when value changes to an array', ->
+    everyType (o) ->
+      changeLength = null
+      o.on 'change', ->
+        changeLength = o.length().value()
+      o.set [1, 2, 3, 4, 5]
+
+      assert.equal changeLength, 5
+      assert.equal o.length().value(), 5
+
+  it 'should update length when value changes to a string', ->
+    everyType (o) ->
+      changeLength = null
+      o.on 'change', ->
+        changeLength = o.length().value()
+      o.set 'bqebaqueue'
+      assert.equal changeLength, 10
+      assert.equal o.length().value(), 10
+
 describe '#type()', ->
   it 'should detect the type based on what is passed in', ->
     assert.equal new RObject(8).type().value(), 'number'
@@ -77,6 +96,17 @@ describe '#type()', ->
     assert.equal new RObject(undefined).type().value(), 'empty'
     assert.equal new RObject({}).type().value(), 'object'
     assert.equal new RObject([]).type().value(), 'array'
+
+  it 'should update type when value changes dynamically', ->
+    everyType (update) ->
+      o = new RObject(12)
+      changeType = 'asdf'
+      o.on 'change', ->
+        changeType = o.type().value()
+
+      o.set update.value()
+      assert.equal changeType, update.type().value()
+      assert.equal o.type().value(), update.type().value()
 
 describe '#value()', ->
   it 'should return the same item rObject was created with', ->
