@@ -9,6 +9,10 @@ RObject = require '../src/RObject'
 
 # #watch()
 
+#todo: fix accessing array items via prop
+#todo: add test for cyclical structure
+#todo: test for own of value
+
 # test length
 
 types = [
@@ -104,7 +108,7 @@ describe '#type()', ->
       o.on 'change', ->
         changeType = o.type().value()
 
-      o.set update.value()
+      o.set update.toObject()
       assert.equal changeType, update.type().value()
       assert.equal o.type().value(), update.type().value()
 
@@ -112,6 +116,12 @@ describe '#value()', ->
   it 'should return the same item rObject was created with', ->
     for item in [8, '8', true, null]
       assert.strictEqual new RObject(item).value(), item
+
+  it 'should only give the properties set on latest value', ->
+    o = new RObject({ a: 'aaa' })
+    o.set { b: 'bbb' }
+    assert.strictEqual o.value().a, undefined
+    assert.equal o.value().b.value(), 'bbb'
 
   it 'should modify object passed in', ->
     original = {a: 'aee'}
@@ -121,15 +131,20 @@ describe '#value()', ->
     assert.equal original.a.value(), 'lol'
     assert.strictEqual original.b.value(), 'bbq'
 
+  it 'should give the same base object that it was created with', ->
+    base = {}
+    o = new RObject(base)
+    assert.equal o.value(), base
+
   it 'should translate undefined to null', ->
     assert.strictEqual new RObject(null).value(), null
     assert.strictEqual new RObject(undefined).value(), null
 
   it 'should only convert to native object shallow', ->
-    assert.equal new RObject({ five: new RObject(5) }).value().five instanceof RObject, true
-    assert.equal new RObject({ five: new RObject(5) }).value().five.value(), 5
-    assert.equal new RObject([ new RObject(5) ]).value()[0] instanceof RObject, true
-    assert.equal new RObject([ new RObject(5) ]).value()[0].value(), 5
+    assert.equal new RObject({ five: 5 }).value().five instanceof RObject, true
+    assert.equal new RObject({ five: 5 }).value().five.value(), 5
+    assert.equal new RObject([ 5 ]).value()[0] instanceof RObject, true
+    assert.equal new RObject([ 5 ]).value()[0].value(), 5
 
   it 'should give value of values added later', ->
     o = new RObject({})
@@ -148,18 +163,16 @@ describe '#toObject()', ->
 
   it 'should give native value for arrays and their contents', ->
     complex = new RObject([
-      new RObject('foo')
-      new RObject(6)
-      new RObject(true)
-      new RObject([3])
-      new RObject({
+      'foo'
+      6
+      true
+      [3]
+      {
         one: 1
-        two: new RObject('2')
-        more: new RObject({
-          a: new RObject('aee')
-          b: 'bee'
-        })
-      })
+        more: {
+          a: 'aee'
+        }
+      }
     ])
     assert.deepEqual complex.toObject(), [
       'foo'
@@ -167,11 +180,9 @@ describe '#toObject()', ->
       true
       [3]
       {
-        one: '1'
-        two: '2'
+        one: 1
         more: {
           a: 'aee'
-          b: 'bee'
         }
       }
     ]
@@ -630,19 +641,19 @@ describe '#reduce()', ->
       , new RObject(0)
       assert.equal result.value(), 17
 
-    it 'should update reduced value when given subproperty changes', ->
-      name = new RObject 'John'
-      o = new RObject([
-        new RObject({ name: 'JJ' })
-        new RObject({ name: name })
-        new RObject({ name: 'Johan' })
-        new RObject({ name: 'Jackie' })
-      ])
-      result = o.reduce (prev, current) ->
-        prev.add current.prop('name').length()
-      , new RObject(0)
-      name.set 'Johnathan'
-      assert.equal result.value(), 22
+    # it 'should update reduced value when given subproperty changes', ->
+    #   name = 'John'
+    #   o = new RObject([
+    #     { name: 'JJ' }
+    #     { name: name }
+    #     { name: 'Johan' }
+    #     { name: 'Jackie' }
+    #   ])
+    #   result = o.reduce (prev, current) ->
+    #     prev.add current.prop('name').length()
+    #   , new RObject(0)
+    #   o.at(1).set 'Johnathan'
+    #   assert.equal result.value(), 22
 
   describe 'type: Other', ->
     everyTypeExcept 'array', (o) ->
@@ -717,11 +728,11 @@ describe '#subscribe()', ->
   describe 'type: Other', ->
     it 'should never call fn unless type is array', ->
       everyTypeExcept 'array', (other) ->
-        o = new RObject
+        o = new RObject()
         calls = 0
         o.subscribe ->
           calls++
-        o.set other
+        o.set other.toObject()
         assert.equal calls, 0
 
 
@@ -966,11 +977,11 @@ describe '#at()', ->
     assert.equal atIndex.value(), 3
 
 
-
+#when object passed to constructor is changed later but before .prop is called, does it need to use the constructed value? (lazily create propRefs)
 describe '#prop()', ->
   describe 'type: Object', ->
     it 'should allow getting properties of passed in the constructor', ->
-      o = new RObject { eight: '8', nine: new RObject('9') }
+      o = new RObject { eight: '8', nine: '9' }
       assert.equal '8', o.prop('eight').value()
       assert.equal '9', o.prop('nine').value()
 
@@ -995,6 +1006,9 @@ describe '#prop()', ->
         o.set(null)
         assert.equal null, prop.toObject()
 
+  # it.only 'should give the same instance every time', ->
+  #   o = new RObject()
+  #   assert.equal o.prop('a'), o.prop('a')
 
   it 'should handle dynamic type change', ->
     everyType (o) ->

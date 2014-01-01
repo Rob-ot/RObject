@@ -2,9 +2,15 @@ do ->
   factory = (EventEmitter) ->
     class RObject extends EventEmitter
       constructor: (val, opts={}) ->
+        @_propRefs = {}
         @set val
 
       value: ->
+        switch @_type
+          when 'object'
+            for own name of @_val
+              @_val[name] = @prop name
+
         @_val
 
       toObject: ->
@@ -14,7 +20,8 @@ do ->
               item.toObject()
           when 'object'
             result = {}
-            for key, val of @_val
+            #todo: for own of?
+            for own key, val of @_val
               result[key] = if val.toObject then val.toObject() else val
             result
           else
@@ -28,11 +35,11 @@ do ->
         @_rlength or= new RObject @_val?.length
 
       set: (val) ->
-        throw new Error('Cannot set read only object') if @_readOnly
-
         val = null if val == undefined # undefined is translated to null
 
         return this if @_val == val # don't fire change event for the same value
+        previousValue = @_val
+        previousType = @_type
         @_val = val
 
         @_type = RObject.typeFromNative @_val
@@ -48,51 +55,31 @@ do ->
           when 'string'
             @_rlength?.set @_val.length
 
+          when 'object'
+            for own name, value of @_val
+              if @_propRefs[name]
+                @_propRefs[name].set value
+                # @_val[name] = @_propRefs[name]
+              # else
+              #   throw new Error('aa') if value instanceof RObject
+              #   @_propRefs[name] = new RObject(value)
+
+        # we need to keep the refs around but just empty them
+        for name, ref of @_propRefs
+          if previousType == 'object' && !@_val?[name]?
+            ref.set null
+
         @emit 'change'
         this
 
       prop: (name, value) ->
-
-        # maybe changes to the parent RObject should be fired as a change on this
-
         if arguments.length > 1
           # set property to value
-          return @prop(name).set value
+          prop = @prop(name).set value
+          @_val[name] = prop
+          return prop
 
-        # need to make a new child to return because when the type of
-        #  this changes to/from a type 'object' we need to change to/from
-        #  the value of that property, so we do that by turning on and off
-        #  a proxy from the actual property to the return of this
-
-        child = new RObject()
-
-        update = =>
-          switch @_type
-            when 'object'
-              if @_val[name] not instanceof RObject
-                @_val[name] = new RObject(@_val[name])
-
-              source = @_val[name]
-
-              updateChild = =>
-                child.set source.value()
-
-              updateParent = =>
-                source.set child.value()
-
-              source.on 'change', updateChild
-              child.on 'change', updateParent
-
-              updateChild()
-
-            else
-              child.set null
-
-        @on 'change', update
-        update()
-
-        child
-
+        @_propRefs[name] or= new RObject(@_val?[name])
 
       combine: (operands..., handler) ->
         child = new RObject()
