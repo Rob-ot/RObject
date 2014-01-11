@@ -3,6 +3,9 @@
 
 Values are almost never mutated, if you need to say reverse an array you would make a reversed (shallow) clone instead of reversing the original. Then, any time the original is modified the reversed clone will stay up to date as the current reversed version.
 
+Sub-properties and array items are vivified to RObjects lazily and only as needed, therefore cyclical structures are supported.
+
+Events should only be fired once object has been fully modified to its new state, events should not be fired with the state partially modified.
 
 # ToDo
 
@@ -46,3 +49,7 @@ map returns an array of RObjects always, is that what we want? (query objects)
 
 solved problems
 types can change but everyone else already has a reference to an object so it can't change, must combine all types into same object
+
+rename toObject to toNative or something?
+
+defer some computations to nextTick by passing in defer: true?
