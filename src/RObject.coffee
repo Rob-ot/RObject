@@ -2,89 +2,96 @@ do ->
   factory = (EventEmitter) ->
     class RObject extends EventEmitter
       constructor: (val, opts={}) ->
-        # About refs:
-        # refs contain the RObject by property or array index
-        # once a ref is added it never changes so for example
+
+        # About _props and _elements:
+        # _props and _elements contain the RObject by property or array index
+        # once a prop or element is added it never changes so for example
         # when an array item is spliced in a way that shifts items
-        # down in the array, the refs will stay the same and will not
+        # down in the array, _elements will stay the same and will not
         # be shifted, their values will be updated to the new values
         # at their relevant indexes
-        @_propRefs = {}
-        @_arrayRefs = {}
+        @_props = {}
+        @_elements = {}
+
         @set val
 
       value: ->
+        @_sync()
+        if @_val instanceof RObject
+          @_val.value()
+        else
+          @_val
+
+      _sync: ->
         switch @_type
           when 'array'
             for item, i in @_val
-              if @_arrayRefs[i]
-                @_val[i] = @_arrayRefs[i].value()
+              if @_elements[i]
+                @_val[i] = @_elements[i].value()
           when 'object'
             for own name of @_val
-              if @_propRefs[name]
-                @_val[name] = @_propRefs[name].value()
-
-        @_val
-
-      # toObject: ->
-      #   switch @_type
-      #     when 'array'
-      #       for item in @_val
-      #         item.toObject()
-      #     when 'object'
-      #       result = {}
-      #       #todo: for own of?
-      #       for own key, val of @_val
-      #         result[key] = if val.toObject then val.toObject() else val
-      #       result
-      #     else
-      #       @value()
+              if @_props[name]
+                @_val[name] = @_props[name].value()
 
       type: ->
         # needs to be created lazily since we can't create a new RObject in the constructor
-        @_rtype or= new RObject @_type
+        @_rtype or= new RObject(if @_type is 'proxy' then @_val.type() else @_type)
+
+      refType: ->
+        @_rrefType or= new RObject @_type
 
       length: ->
         @_rlength or= new RObject @_val?.length
 
-      set: (val) ->
+      refSet: (val) ->
         val = null if val == undefined # undefined is translated to null
 
         return this if @_val == val # don't fire change event for the same value
+
         previousValue = @_val
         previousType = @_type
         @_val = val
 
         @_type = RObject.typeFromNative @_val
-        @_rtype?.set @_type
+        @_rrefType?.set @_type
+        @_rtype?.set if @_type is 'proxy' then @_val.type() else @_type
 
         switch @_type
           when 'array'
             #todo: is this length change fired too soon?
             @_rlength?.set @_val.length
             for value, i in @_val
-              if @_arrayRefs[i]
-                @_arrayRefs[i].set value
+              if @_elements[i]
+                @_elements[i].set value
 
           when 'string'
             @_rlength?.set @_val.length
 
           when 'object'
             for own name, value of @_val
-              if @_propRefs[name]
-                @_propRefs[name].set value
-                # @_val[name] = @_propRefs[name]
+              if @_props[name]
+                @_props[name].set value
+                # @_val[name] = @_props[name]
               # else
               #   throw new Error('aa') if value instanceof RObject
-              #   @_propRefs[name] = new RObject(value)
+              #   @_props[name] = new RObject(value)
 
-        # we need to keep the refs around but just empty them
-        for name, ref of @_propRefs
+          when 'proxy'
+            @_val.on 'change', =>
+              @emit 'change'
+
+        # we need to keep the empty props around but just empty them
+        for name, prop of @_props
           if previousType == 'object' && !@_val?[name]?
-            ref.set null
+            prop.set null
+        #todo: this for arrays?
 
         @emit 'change'
         this
+
+      set: (val) ->
+        return @_val.set.apply @_val, arguments if @_type == 'proxy'
+        @refSet val
 
       prop: (name, value) ->
         if arguments.length > 1
@@ -93,33 +100,33 @@ do ->
           @_val[name] = prop
           return prop
 
-        @_propRefs[name] or= new RObject(@_val?[name])
+        child = new RObject()
+        update = =>
+          nameVal = if name instanceof RObject then name.value() else name
+          child.refSet @_props[nameVal] or= new RObject(@_val?[nameVal])
+
+        if name instanceof RObject
+          name.on 'change', update
+        update()
+        child
 
       at: (index) ->
-        @_arrayRefs[index] or= new RObject(@_val[index])
+        child = new RObject()
+        update = =>
+          indexVal = if index instanceof RObject then index.value() else index
+          child.refSet @_elements[indexVal] or= new RObject(@_val[indexVal])
 
-
-      #   child = new RObject()
-      #   update = =>
-      #     child.set switch @_type
-      #       when 'array'
-      #         @_val[index.value()].value()
-      #       else
-      #         null
-
-      #   @on 'add', update
-      #   @on 'remove', update
-      #   index.on 'change', update
-      #   update()
-
-      #   child
+        if index instanceof RObject
+          index.on 'change', update
+        update()
+        child
 
       combine: (operands..., handler) ->
         child = new RObject()
         cb = =>
           operandValues = (operand.value() for operand in operands)
-          child.set handler this.value(), operandValues...
-        this.on 'change', cb
+          child.set handler @_val, operandValues...
+        @on 'change', cb
         for operand in operands
           operand.on 'change', cb
         cb()
@@ -165,8 +172,8 @@ do ->
           when 'array'
             removed = @_val.splice index, numToRemove, itemsToAdd...
 
-            for i, ref of @_arrayRefs
-              ref.set @_val[i]
+            for i, element of @_elements
+              element.set @_val[i]
 
             @_rlength?.set @_val.length
 
@@ -386,11 +393,33 @@ do ->
           else
             @ #todo: return invalid or 0 or something?
 
+    for own method, original of RObject.prototype
+      continue if method in ['constructor', 'value', 'at', 'type', 'refType', 'refSet', 'set']
+      do (method, original) ->
+        RObject.prototype[method] = ->
+          child = new RObject()
+          originalArguments = arguments
+          update = ->
+            child.refSet if @_type == 'proxy'
+              @_val[method].apply @_val, originalArguments
+            else
+              original.apply @, originalArguments
 
+          @on 'change', update
+          # for argument in arguments
+          #   if argument instanceof RObject
+          #     argument.on 'change', ->
+          #       console.log 'arg changed'
+          #       update()
+          update.call @
+
+          child
 
     RObject.typeFromNative = (object) ->
       if object == null || object == undefined
         'empty'
+      else if object instanceof RObject
+        'proxy'
       else if Array.isArray(object)
         'array'
       else

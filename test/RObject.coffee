@@ -92,6 +92,64 @@ describe '#set()', ->
       assert.equal changeLength, 10
       assert.equal o.length().value(), 10
 
+  describe 'proxy', ->
+    it 'should fire change event on single proxy when original is changed', ->
+      original = new RObject(6)
+      proxy = new RObject(original)
+
+      changes = 0
+      changeValue = null
+      proxy.on 'change', ->
+        changes++
+        changeValue = proxy.value()
+
+      original.set 15
+      assert.equal changes, 1
+      assert.equal changeValue, 15
+
+    it 'should fire change event on nested proxies when original is changed', ->
+      original = new RObject(6)
+      proxy = new RObject(original)
+      subProxy = new RObject(proxy)
+
+      changes = 0
+      changeValue = null
+      subProxy.on 'change', ->
+        changes++
+        changeValue = subProxy.value()
+
+      original.set 15
+      assert.equal changes, 1
+      assert.equal changeValue, 15
+
+    it 'should change the original when set is called on a proxy', ->
+      original = new RObject(6)
+      proxy = new RObject(original)
+      subProxy = new RObject(proxy)
+
+      changes = 0
+      changeValue = null
+      subProxy.on 'change', ->
+        changes++
+        changeValue = subProxy.value()
+
+      subProxy.set 15
+      assert.equal original.value(), 15
+      assert.equal changes, 1
+      assert.equal changeValue, 15
+
+    # it 'should stop calling change when RObject is set to another value', ->
+
+
+
+describe 'proxy', ->
+
+  # it 'type should give the type of the real object', ->
+  #   original = new RObject(6)
+  #   proxy = new RObject(original)
+  #   subProxy = new RObject(proxy)
+  #   assert.equal subProxy.type(), 'number'
+
 describe '#type()', ->
   it 'should detect the type based on what is passed in', ->
     assert.equal new RObject(8).type().value(), 'number'
@@ -102,16 +160,57 @@ describe '#type()', ->
     assert.equal new RObject({}).type().value(), 'object'
     assert.equal new RObject([]).type().value(), 'array'
 
+  it 'should dereference proxies', ->
+    assert.equal new RObject(new RObject('asdf')).type().value(), 'string'
+
   it 'should update type when value changes dynamically', ->
     everyType (update) ->
       o = new RObject(12)
-      changeType = 'asdf'
+      midChangeType = 'asdf'
       o.on 'change', ->
-        changeType = o.type().value()
+        midChangeType = o.type().value()
+
+      oType = o.refType()
+      midTypeChangeVal = 'asdf'
+      oType.on 'change', ->
+        midTypeChangeVal = oType.value()
 
       o.set update.value()
-      assert.equal changeType, update.type().value()
       assert.equal o.type().value(), update.type().value()
+      assert.equal midChangeType, update.type().value()
+      # assert.equal midTypeChangeVal, update.refType().value()
+
+describe '#refType()', ->
+  it 'should be proxy for RObject and normal type of anything else', ->
+    assert.equal new RObject(new RObject(6)).refType().value(), 'proxy'
+
+    assert.equal new RObject(8).refType().value(), 'number'
+    assert.equal new RObject('8').refType().value(), 'string'
+    assert.equal new RObject(true).refType().value(), 'boolean'
+    assert.equal new RObject(null).refType().value(), 'empty'
+    assert.equal new RObject(undefined).refType().value(), 'empty'
+    assert.equal new RObject({}).refType().value(), 'object'
+    assert.equal new RObject([]).refType().value(), 'array'
+
+  it 'should update refType when value changes dynamically', ->
+    everyType (update) ->
+      o = new RObject(new RObject())
+      midChangeType = 'asdfg'
+      o.on 'change', ->
+        midChangeType = o.refType().value()
+
+      oType = o.refType()
+      midTypeChangeVal = 'asdf'
+      oType.on 'change', ->
+        midTypeChangeVal = oType.value()
+
+      o.refSet update.value()
+      assert.equal o.refType().value(), update.refType().value()
+      assert.equal midChangeType, update.refType().value()
+      assert.equal midTypeChangeVal, update.refType().value()
+
+      o.refSet new RObject(8)
+      assert.equal o.refType().value(), 'proxy'
 
 describe '#value()', ->
   it 'should return the same item rObject was created with', ->
@@ -180,6 +279,21 @@ describe '#value()', ->
     o = new RObject({ d: false })
     o.prop 'd'
     assert.deepEqual o.value(), { d: false }
+
+  describe 'proxy', ->
+    it 'value should give the value of the real object', ->
+      original = new RObject(6)
+      proxy = new RObject(original)
+      subProxy = new RObject(proxy)
+      assert.equal subProxy.value(), 6
+
+    it 'should give the changed value when original changes', ->
+      it 'value should give the value of the real object', ->
+      original = new RObject(6)
+      proxy = new RObject(original)
+      subProxy = new RObject(proxy)
+      original.set 12
+      assert.equal subProxy.value(), 12
 
 describe '#inverse()', ->
   describe 'type: boolean', ->
@@ -788,6 +902,36 @@ describe '#subtract()', ->
   assert.strictEqual result.value(), -21, "it should update when second value is changed"
   assert.equal result instanceof RObject, true, "it should return an RObject"
 
+  it 'should work on a proxy', ->
+    o1 = new RObject(new RObject(8))
+    o2 = new RObject(5)
+    result = o1.subtract o2
+    assert.equal result.value(), 3
+
+  it 'proxy should update when it changes', ->
+    o1 = new RObject(new RObject(8))
+    o2 = new RObject(5)
+    result = o1.subtract o2
+    o1.set 9
+    assert.equal result.value(), 4
+
+  it 'proxy should give correct value when proxy turns to a normal number', ->
+    o1 = new RObject(new RObject(8))
+    o2 = new RObject(5)
+    result = o1.subtract o2
+    o1.refSet 9
+    assert.equal result.value(), 4
+
+  it 'proxy should give correct value when normal number turns to a proxy', ->
+    o1 = new RObject(8)
+    o2 = new RObject(5)
+    result = o1.subtract o2
+    o1.set new RObject(9)
+    assert.equal result.value(), 4
+
+
+
+
 
 describe '#multiply()', ->
   o1 = new RObject(5)
@@ -945,19 +1089,17 @@ describe '#at()', ->
     a.splice 1, 0, 2
     assert.equal atIndex1.value(), 2
 
-  # it 'should update item at index when index is changed', ->
-  #   index = new RObject(1)
-  #   a = new RObject([1, 2, 3])
-  #   atIndex = a.at(index)
-  #   assert.equal atIndex.value(), 2
-  #   index.set 2
-  #   assert.equal atIndex.value(), 3
+  it 'should update item at index when index is changed', ->
+    index = new RObject(1)
+    a = new RObject([1, 2, 3])
+    atIndex = a.at(index)
+    assert.equal atIndex.value(), 2
+    index.set 2
+    assert.equal atIndex.value(), 3
 
 
 #when object passed to constructor is changed later but before .prop is called, does it need to use the constructed value? (lazily create propRefs)
 describe '#prop()', ->
-  #todo: handle RObject property name
-
   describe 'type: Object', ->
     it 'should allow getting properties of passed in the constructor', ->
       o = new RObject { eight: '8', nine: '9' }
@@ -992,3 +1134,10 @@ describe '#prop()', ->
       assert.equal 'df', prop.value()
       o.set 5
       assert.equal null, prop.value()
+
+  it 'should switch to new property when name changes', ->
+    o = new RObject({ a: 'aaa', b: 'bbb' })
+    propName = new RObject('a')
+    result = o.prop propName
+    propName.set 'b'
+    assert.equal result.value(), 'bbb'
