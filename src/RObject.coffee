@@ -11,16 +11,28 @@ do ->
         # be shifted, their values will be updated to the new values
         # at their relevant indexes
         @_props = {}
-        @_elements = {}
+
+        # _elements is a 1:1 lazy mapping of @_value converted to RObjects
+        # when items are spliced in or out of @_val they are also spliced on @_elements
+        @_elements = []
+        # _ats is a lazy storage for RObjects that hold the live value of elements
+        # at the given offset
+        # when items are spliced in or out of @_val _ats don't move around,
+        # their values are just updated to the new value at given offset
+        @_ats = []
 
         @set val
 
       value: ->
-        @_sync()
         if @_val instanceof RObject
           @_val.value()
         else
+          @_sync()
           @_val
+
+      refValue: ->
+        @_sync()
+        @_val
 
       _sync: ->
         switch @_type
@@ -38,7 +50,7 @@ do ->
         @_rtype or= new RObject(if @_type is 'proxy' then @_val.type() else @_type)
 
       refType: ->
-        @_rrefType or= new RObject @_type
+        @_rRefType or= new RObject @_type
 
       length: ->
         @_rlength or= new RObject @_val?.length
@@ -53,7 +65,7 @@ do ->
         @_val = val
 
         @_type = RObject.typeFromNative @_val
-        @_rrefType?.set @_type
+        @_rRefType?.set @_type
         @_rtype?.set if @_type is 'proxy' then @_val.type() else @_type
 
         switch @_type
@@ -63,6 +75,8 @@ do ->
             for value, i in @_val
               if @_elements[i]
                 @_elements[i].set value
+              else if value instanceof RObject
+                @_elements[i] = value
 
           when 'string'
             @_rlength?.set @_val.length
@@ -71,16 +85,20 @@ do ->
             for own name, value of @_val
               if @_props[name]
                 @_props[name].set value
-                # @_val[name] = @_props[name]
-              # else
-              #   throw new Error('aa') if value instanceof RObject
-              #   @_props[name] = new RObject(value)
+              else if value instanceof RObject
+                # if set is called with an RObject as a property
+                # and its _props[name] is not set yet
+                # we can just use that same RObject
+                @_props[name] = value
+
 
           when 'proxy'
             @_val.on 'change', =>
               @emit 'change'
 
-        # we need to keep the empty props around but just empty them
+        @_refreshAts()
+
+        # we need to keep the empty props references around but just empty them
         for name, prop of @_props
           if previousType == 'object' && !@_val?[name]?
             prop.set null
@@ -90,31 +108,56 @@ do ->
         this
 
       set: (val) ->
-        return @_val.set.apply @_val, arguments if @_type == 'proxy'
+        return @_val.set val if @_type == 'proxy'
         @refSet val
+
+      #todo: optimize out this fn and run only on indexes that change
+      _refreshAts: ->
+        switch @_type
+          when 'array'
+            for i in [0..@_val.length]
+              if @_ats[i]
+                @_ats[i].refSet @_elements[i] || @_val[i]
+
+          else
+            # null everything out
+            for at, i in @_ats
+              if at
+                at.refSet null
+
 
       prop: (name, value) ->
         if arguments.length > 1
-          # set property to value
           prop = @prop(name).set value
-          @_val[name] = prop
           return prop
 
         child = new RObject()
         update = =>
           nameVal = if name instanceof RObject then name.value() else name
-          child.refSet @_props[nameVal] or= new RObject(@_val?[nameVal])
+          @_props[nameVal] or= new RObject(@_val?[nameVal])
+          if @_type is 'object'
+            @_val[nameVal] = @_props[nameVal]
+          child.refSet @_props[nameVal]
 
         if name instanceof RObject
           name.on 'change', update
         update()
         child
 
+      #todo: optimize - dont use an extra proxy when index is static
       at: (index) ->
         child = new RObject()
         update = =>
           indexVal = if index instanceof RObject then index.value() else index
-          child.refSet @_elements[indexVal] or= new RObject(@_val[indexVal])
+          # it is important that elements in _ats are proxied to the item in _elements at index
+          @_ats[indexVal] or= new RObject(
+            @_elements[indexVal] or= new RObject(@_val[indexVal])
+          )
+
+          #todo: what does this do?
+          if @_type is 'array'
+            @_val[indexVal] = @_elements[indexVal]
+          child.refSet @_ats[indexVal]
 
         if index instanceof RObject
           index.on 'change', update
@@ -167,22 +210,42 @@ do ->
           else
             @
 
-      splice: (index, numToRemove, itemsToAdd...) ->
+      splice: (index, requestedNumToRemove, itemsToAdd...) ->
         switch @_type
           when 'array'
-            removed = @_val.splice index, numToRemove, itemsToAdd...
+            removeHangover = index + requestedNumToRemove - @_val.length
+            numToRemove = if removeHangover > 0
+              requestedNumToRemove - removeHangover
+            else
+              requestedNumToRemove
 
-            for i, element of @_elements
-              element.set @_val[i]
+
+            rItemsToAdd = for item, i in itemsToAdd
+              if item instanceof RObject then item else new RObject(item)
+
+            # since _elements is sparse, make sure index exists so splice works properly
+            @_elements[index] ?= undefined
+
+            rRemoved = @_elements.splice index, numToRemove, rItemsToAdd...
+
+            # _elements is lazily created so make sure the things we just spliced off are RObjects
+            if numToRemove
+              for i in [0..numToRemove - 1]
+                rRemoved[i] or= new RObject(@_val[index + i])
+
+            removed = @_val.splice index, numToRemove, itemsToAdd...
 
             @_rlength?.set @_val.length
 
-            if removed.length
-              @emit 'remove', removed, {index}
+            @_refreshAts()
+
+            if rRemoved.length
+              @emit 'remove', rRemoved, {index}
 
             if itemsToAdd.length
-              @emit 'add', itemsToAdd, {index}
+              @emit 'add', rItemsToAdd, {index}
 
+            removed
           #todo string
           else
             @
@@ -302,29 +365,30 @@ do ->
       #   child
 
 
-      # map: (transform) ->
-      #   child = new RObject()
-      #   update = =>
-      #     child.set switch @_type
-      #       when 'array'
-      #         @_val.map transform
-      #       else
-      #         null
+      map: (transform) ->
+        child = new RObject()
+        update = =>
+          child.set switch @_type
+            when 'array'
+              for item, i in @_val
+                transform @_elements[i] or= new RObject(@_val[i])
+            else
+              null
 
-      #   # assume add and remove are only called when type is array
-      #   @on 'remove', (items, {index}) ->
-      #     child.splice index, items.length
+        @on 'remove', (items, {index}) ->
+          child.splice index, items.length
 
-      #   @on 'add', (items, {index}) ->
-      #     #todo: handle multiple added
-      #     result = transform items[0]
-      #     rResult = if result instanceof RObject then result else new RObject(result)
-      #     child.add rResult, {index}
+        @on 'add', (items, {index}) ->
+          transformed = for item in items
+            result = transform item
+            if result instanceof RObject then result else new RObject(result)
 
-      #   @on 'change', update
-      #   update()
+          child.splice index, 0, transformed...
 
-      #   child
+        @on 'change', update
+        update()
+
+        child
 
       # subscribe: (handler) ->
       #   update = =>
@@ -339,9 +403,9 @@ do ->
       #   @on 'change', update
       #   update()
 
-      subtract: (operand) ->
-        @combine operand, (aVal, bVal) ->
-          aVal - bVal
+      # subtract: (operand) ->
+      #   @combine operand, (aVal, bVal) ->
+      #     aVal - bVal
 
       multiply: (operand) ->
         @combine operand, (aVal, bVal) ->
@@ -371,9 +435,9 @@ do ->
         @combine operand, (aVal, bVal) ->
           aVal <= bVal
 
-      is: (operand) ->
-        @combine operand, (aVal, bVal) ->
-          aVal == bVal
+      # is: (operand) ->
+      #   @combine operand, (aVal, bVal) ->
+      #     aVal == bVal
 
       # negate: ->
       #   @combine RNumber, (val) ->
@@ -393,27 +457,27 @@ do ->
           else
             @ #todo: return invalid or 0 or something?
 
-    for own method, original of RObject.prototype
-      continue if method in ['constructor', 'value', 'at', 'type', 'refType', 'refSet', 'set']
-      do (method, original) ->
-        RObject.prototype[method] = ->
-          child = new RObject()
-          originalArguments = arguments
-          update = ->
-            child.refSet if @_type == 'proxy'
-              @_val[method].apply @_val, originalArguments
-            else
-              original.apply @, originalArguments
+    # for own method, original of RObject.prototype
+    #   continue if method in ['constructor', 'value', 'combine', '_refreshAts', 'prop', 'splice', 'refValue', 'at', 'type', 'refType', 'refSet', 'set', 'inverse', '_sync', 'map']
+    #   do (method, original) ->
+    #     RObject.prototype[method] = ->
+    #       child = new RObject()
+    #       originalArguments = arguments
+    #       update = ->
+    #         child.refSet if @_type == 'proxy'
+    #           @_val[method].apply @_val, originalArguments
+    #         else
+    #           original.apply @, originalArguments
 
-          @on 'change', update
-          # for argument in arguments
-          #   if argument instanceof RObject
-          #     argument.on 'change', ->
-          #       console.log 'arg changed'
-          #       update()
-          update.call @
+    #       @on 'change', update
+    #       # for argument in arguments
+    #       #   if argument instanceof RObject
+    #       #     argument.on 'change', ->
+    #       #       console.log 'arg changed'
+    #       #       update()
+    #       update.call @
 
-          child
+    #       child
 
     RObject.typeFromNative = (object) ->
       if object == null || object == undefined

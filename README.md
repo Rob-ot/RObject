@@ -50,6 +50,12 @@ map returns an array of RObjects always, is that what we want? (query objects)
 solved problems
 types can change but everyone else already has a reference to an object so it can't change, must combine all types into same object
 
-rename toObject to toNative or something?
-
 defer some computations to nextTick by passing in defer: true?
+
+handle when set is called during a change event
+
+toNumber, etc?
+
+async map
+throttle
+groupMap
