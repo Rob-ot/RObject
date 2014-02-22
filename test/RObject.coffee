@@ -31,6 +31,8 @@ RObject = require '../src/RObject'
 
 #todo:  make sure all methods work with multi-adds/removes
 
+#todo: type change event is fired before value changes
+
 # test length
 
 types = [
@@ -296,10 +298,90 @@ describe '#set()', ->
       o.set 'barbaque'
       assert.strictEqual changeLength, 8
 
-    #todo: move to refSet
-    # it 'should stop calling change event when RObject is set to another value', ->
 
-#todo: refSet here
+describe '#refSet', ->
+
+  it 'should change the value to the set value for non-RObject values', ->
+    o = new RObject()
+    o.refSet 6
+    assert.strictEqual o.value(), 6
+
+  it 'should change the value of the root value to the refSet RObject value', ->
+    neu = new RObject 23
+    old = new RObject 8
+    root = new RObject old
+    root.refSet neu
+    assert.strictEqual root.value(), 23
+
+  it 'shouldnt touch the previous RObjects value', ->
+    neu = new RObject 23
+    old = new RObject 8
+    root = new RObject old
+    root.refSet neu
+    assert.strictEqual old.value(), 8
+
+  it 'should change value when set to a value that would be == to the thing being set', ->
+    o = new RObject(8)
+    o.refSet '8'
+    assert.strictEqual o.value(), '8'
+
+  it 'should update length when value changes to an array', ->
+    o = new RObject()
+    o.refSet [1, 2, 3, 4, 5]
+    assert.strictEqual o.length().value(), 5
+
+  it 'should update length when value changes to a string', ->
+    o = new RObject()
+    o.refSet 'barbaque'
+    assert.strictEqual o.length().value(), 8
+
+  describe 'change event', ->
+
+    it 'should fire 1 time on proxy when proxy is set to the same value', ->
+      original = new RObject('bbq')
+      proxy = new RObject(original)
+      changes = 0
+      proxy.on 'change', -> changes++
+      proxy.refSet 'bbq'
+      assert.strictEqual changes, 1
+
+    it 'should fire on proxy 1 time when proxy value changes', ->
+      original = new RObject()
+      proxy = new RObject(original)
+      changes = 0
+      proxy.on 'change', -> changes++
+      proxy.refSet 'asdf'
+      assert.strictEqual changes, 1
+
+    it 'should stop calling change event when RObject is set to another value', ->
+      old = new RObject(5)
+      neu = new RObject(8)
+      root = new RObject(old)
+      root.refSet neu
+      changes = 0
+      root.on 'change', ->
+        changes++
+      old.set 2
+      assert.strictEqual changes, 0
+
+
+
+
+    it 'should not change "add event fire value" when base element value changes', ->
+      o = new RObject([1])
+      added = null
+      o.on 'add', (val) -> added = val
+      o.add [2, 3]
+      o.set [4, 5, 6]
+      assert.deepEqual added.map((o) -> o.value()), [2, 3]
+
+
+
+
+
+
+
+
 
 describe '#value()', ->
   it 'should give the value when RObject was created with a number', ->
@@ -706,12 +788,12 @@ describe '#inverse()', ->
       o.set 3
       assert.strictEqual inverse.value(), -3
 
-  # describe 'proxy', ->
-  #   it 'should inverse a proxied number', ->
-  #     original = new RObject(7)
-  #     proxy = new RObject(original)
-  #     inverse = proxy.inverse()
-  #     assert.strictEqual inverse.value(), -7
+  describe 'proxy', ->
+    it.only 'should inverse a proxied number', ->
+      original = new RObject(7)
+      proxy = new RObject(original)
+      inverse = proxy.inverse()
+      assert.strictEqual inverse.value(), -7
 
 
 
@@ -996,105 +1078,105 @@ describe '#map()', ->
   #   assert.deepEqual inversed.value(), null
 
 
+#todo: refector to use 1 assert vvvvvvv
+describe '#filter()', ->
+  isEven = (num) ->
+    num.mod(new RObject(2)).is(new RObject(0))
 
-# describe '#filter()', ->
-#   isEven = (num) ->
-#     num.mod(new RObject(2)).is(new RObject(0))
+  describe 'type: Array', ->
+    it 'should filter initial items', ->
+      o = new RObject([4, 5, 6])
+      evens = o.filter isEven
+      assert.deepEqual evens.value(), [4, 6]
 
-#   describe 'type: Array', ->
-#     it 'should filter initial items', ->
-#       o = new RObject([4, 5, 6])
-#       evens = o.filter isEven
-#       assert.deepEqual evens.value(), [4, 6]
+    it 'should filter added items', ->
+      o = new RObject([4, 5, 6])
+      evens = o.filter isEven
+      o.add new RObject(7)
+      assert.deepEqual evens.value(), [4, 6]
+      o.add new RObject(8)
+      assert.deepEqual evens.value(), [4, 6, 8]
 
-#     it 'should filter added items', ->
-#       o = new RObject([4, 5, 6])
-#       evens = o.filter isEven
-#       o.add new RObject(7)
-#       assert.deepEqual evens.value(), [4, 6]
-#       o.add new RObject(8)
-#       assert.deepEqual evens.value(), [4, 6, 8]
+    it 'should filter added items when more than one is added at a time', ->
+      o = new RObject([4, 5, 6])
+      evens = o.filter isEven
+      o.add [new RObject(7), new RObject(8)]
+      assert.deepEqual evens.value(), [4, 6, 8]
 
-#     it 'should filter added items when more than one is added at a time', ->
-#       o = new RObject([4, 5, 6])
-#       evens = o.filter isEven
-#       o.add [new RObject(7), new RObject(8)]
-#       assert.deepEqual evens.value(), [4, 6, 8]
+    it 'should filter added items and put them in the correct place when spliced', ->
+      o = new RObject([1, 2, 4, 3, 3, 5, 9, 12])
+      evens = o.filter isEven
+      o.splice 5, 0, new RObject(7), new RObject(8), new RObject(9), new RObject(10)
+      assert.deepEqual evens.value(), [2, 4, 8, 10, 12]
 
-#     it 'should filter added items and put them in the correct place when spliced', ->
-#       o = new RObject([1, 2, 4, 3, 3, 5, 9, 12])
-#       evens = o.filter isEven
-#       o.splice 5, 0, new RObject(7), new RObject(8), new RObject(9), new RObject(10)
-#       assert.deepEqual evens.value(), [2, 4, 8, 10, 12]
+    it 'should filter added items and put them in the correct place when spliced at position 0', ->
+      o = new RObject([3, 4])
+      evens = o.filter isEven
+      o.splice 0, 0, new RObject(2)
+      assert.deepEqual evens.value(), [2, 4]
 
-#     it 'should filter added items and put them in the correct place when spliced at position 0', ->
-#       o = new RObject([3, 4])
-#       evens = o.filter isEven
-#       o.splice 0, 0, new RObject(2)
-#       assert.deepEqual evens.value(), [2, 4]
+    it 'should remove items that are removed from the source', ->
+      source = new RObject([
+        new RObject(3)
+        new RObject(4)
+        new RObject(3) # remove
+        new RObject(8) # remove
+        new RObject(2) # remove
+        new RObject(5)
+        new RObject(6)
+      ])
+      evens = source.filter isEven
+      source.splice 2, 3
+      assert.deepEqual evens.value(), [4, 6]
 
-#     it 'should remove items that are removed from the source', ->
-#       source = new RObject([
-#         new RObject(3)
-#         new RObject(4)
-#         new RObject(3) # remove
-#         new RObject(8) # remove
-#         new RObject(2) # remove
-#         new RObject(5)
-#         new RObject(6)
-#       ])
-#       evens = source.filter isEven
-#       source.splice 2, 3
-#       assert.deepEqual evens.value(), [4, 6]
+    it 'should always call back with an RObject', ->
+      o = new RObject([3])
+      isRObject = false
+      evens = o.filter (val) ->
+        isRObject = val instanceof RObject
+        new RObject(true)
 
-#     it 'should always call back with an RObject', ->
-#       o = new RObject([3])
-#       isRObject = false
-#       evens = o.filter (val) ->
-#         isRObject = val instanceof RObject
-#         new RObject(true)
+      assert.strictEqual isRObject, true
 
-#       assert.strictEqual isRObject, true
+    it 'should update filter when given boolean changes', ->
+      first = new RObject(3)
+      o = new RObject([first])
+      evens = o.filter isEven
+      first.set 4
+      assert.deepEqual evens.value(), [4]
+      first.set 3
+      assert.deepEqual evens.value(), []
 
-#     it 'should update filter when given boolean changes', ->
-#       first = new RObject(3)
-#       o = new RObject([first])
-#       evens = o.filter isEven
-#       first.set 4
-#       assert.deepEqual evens.value(), [4]
-#       first.set 3
-#       assert.deepEqual evens.value(), []
+    it 'should update filter when given boolean changes for dynamically added items', ->
+      four = new RObject(4)
+      o = new RObject([2, 3, 5, 6])
+      evens = o.filter isEven
+      o.splice 2, 0, four
+      four.set 4
+      assert.deepEqual evens.value(), [2, 4, 6]
+      four.set 3
+      assert.deepEqual evens.value(), [2, 6]
+      # do it again to make sure it is releasing event listeners and stuff
+      four.set 4
+      assert.deepEqual evens.value(), [2, 4, 6]
+      four.set 3
+      assert.deepEqual evens.value(), [2, 6]
 
-#     it 'should update filter when given boolean changes for dynamically added items', ->
-#       four = new RObject(4)
-#       o = new RObject([2, 3, 5, 6])
-#       evens = o.filter isEven
-#       o.splice 2, 0, four
-#       four.set 4
-#       assert.deepEqual evens.value(), [2, 4, 6]
-#       four.set 3
-#       assert.deepEqual evens.value(), [2, 6]
-#       # do it again to make sure it is releasing event listeners and stuff
-#       four.set 4
-#       assert.deepEqual evens.value(), [2, 4, 6]
-#       four.set 3
-#       assert.deepEqual evens.value(), [2, 6]
-
-#     it 'should maintain order of filtered arrays', ->
-#       o = new RObject([1, 2, 3, 4, 5, 6])
-#       evens = o.filter isEven
-#       o.value()[3].set 11
-#       o.value()[3].set 4
-#       assert.deepEqual evens.value(), [2, 4, 6]
+    it 'should maintain order of filtered arrays', ->
+      o = new RObject([1, 2, 3, 4, 5, 6])
+      evens = o.filter isEven
+      o.at(3).set 11
+      o.at(3).set 4
+      assert.deepEqual evens.value(), [2, 4, 6]
 
 
-#   it 'should handle dynamic type change', ->
-#     o = new RObject()
-#     evens = o.filter isEven
-#     o.set [3, 4]
-#     assert.deepEqual evens.value(), [4]
-#     o.set null
-#     assert.deepEqual evens.value(), null
+  it 'should handle dynamic type change', ->
+    o = new RObject()
+    evens = o.filter isEven
+    o.set [3, 4]
+    assert.deepEqual evens.value(), [4]
+    o.set null
+    assert.deepEqual evens.value(), null
 
 
 #todo: test event listener removal
@@ -1184,79 +1266,78 @@ describe '#map()', ->
 #       assert.strictEqual result.value(), null
 
 
-# describe '#subscribe()', ->
-#   describe 'type: Array', ->
-#     it 'should call fn for every item that is already in the array', ->
-#       o = new RObject([1, 2, 3])
-#       calls = []
-#       o.subscribe (item) ->
-#         calls.push item
+describe '#subscribe()', ->
+  describe 'type: Array', ->
+    it 'should call fn for every item that is already in the array', ->
+      o = new RObject([1, 2, 3])
+      calls = []
+      o.subscribe (item) ->
+        calls.push item
 
-#       assert.strictEqual calls.length, 3
-#       assert.deepEqual (calls.map((o) -> o.value())), [1, 2, 3]
+      assert.strictEqual calls.length, 3
+      assert.deepEqual (calls.map((o) -> o.value())), [1, 2, 3]
 
-#     it 'should call fn for items dynamically added', ->
-#       o = new RObject([])
-#       calls = []
-#       o.subscribe (item) ->
-#         calls.push item
+    it 'should call fn for items dynamically added', ->
+      o = new RObject([])
+      o.subscribe (item) ->
+        calls?.push item
+      calls = []
+      o.splice 0, 0, new RObject(1), new RObject(2), new RObject(3)
 
-#       o.splice 0, 0, new RObject(1), new RObject(2), new RObject(3)
+      assert.strictEqual calls.length, 3
+      assert.deepEqual (calls.map((o) -> o.value())), [1, 2, 3]
 
-#       assert.strictEqual calls.length, 3
-#       assert.deepEqual (calls.map((o) -> o.value())), [1, 2, 3]
+    it 'should include indexes of items added', ->
+      o = new RObject([1, 2, 4, 5])
+      calls = []
+      indexes = []
+      o.subscribe (item, {index}) ->
+        calls.push item
+        indexes.push index
 
-#     it 'should include indexes of items added', ->
-#       o = new RObject([1, 2, 4, 5])
-#       calls = []
-#       indexes = []
-#       o.subscribe (item, {index}) ->
-#         calls.push item
-#         indexes.push index
+      o.splice 1, 1, new RObject(2), new RObject(3)
 
-#       o.splice 1, 1, new RObject(2), new RObject(3)
+      assert.strictEqual calls.length, 6
+      assert.deepEqual (calls.map((o) -> o.value())), [1, 2, 4, 5, 2, 3]
+      assert.deepEqual indexes, [0, 1, 2, 3, 1, 2]
 
-#       assert.strictEqual calls.length, 6
-#       assert.deepEqual (calls.map((o) -> o.value())), [1, 2, 4, 5, 2, 3]
-#       assert.deepEqual indexes, [0, 1, 2, 3, 1, 2]
+    it 'should call fn when type is dynamically changed to an array', ->
+      everyTypeExcept 'array', (o) ->
+        calls = []
+        indexes = []
+        o.subscribe (item, {index}) ->
+          calls.push item
+          indexes.push index
 
-#     it 'should call fn when type is dynamically changed to an array', ->
-#       everyTypeExcept 'array', (o) ->
-#         calls = []
-#         indexes = []
-#         o.subscribe (item, {index}) ->
-#           calls.push item
-#           indexes.push index
+        o.set [1, 2]
+        assert.strictEqual calls.length, 2
+        assert.deepEqual indexes, [0, 1]
 
-#         o.set [1, 2]
-#         assert.strictEqual calls.length, 2
-#         assert.deepEqual indexes, [0, 1]
+    it 'should call fn when type is dynamically changed to array from another array', ->
+      o = new RObject([1, 2])
 
-#     it 'should call fn when type is dynamically changed to array from another array', ->
-#       o = new RObject([1, 2])
+      calls = []
+      indexes = []
+      o.subscribe (item, {index}) ->
+        calls.push item
+        indexes.push index
 
-#       calls = []
-#       indexes = []
-#       o.subscribe (item, {index}) ->
-#         calls.push item
-#         indexes.push index
+      assert.strictEqual calls.length, 2
 
-#       assert.strictEqual calls.length, 2
+      o.set [3, 4]
 
-#       o.set [3, 4]
+      assert.deepEqual calls.map((o) -> o.value()), [1, 2, 3, 4]
+      assert.deepEqual indexes, [0, 1, 0, 1]
 
-#       assert.deepEqual calls.map((o) -> o.value()), [1, 2, 3, 4]
-#       assert.deepEqual indexes, [0, 1, 0, 1]
-
-#   describe 'type: Other', ->
-#     it 'should never call fn unless type is array', ->
-#       everyTypeExcept 'array', (other) ->
-#         o = new RObject()
-#         calls = 0
-#         o.subscribe ->
-#           calls++
-#         o.set other.value()
-#         assert.strictEqual calls, 0
+  describe 'type: Other', ->
+    it 'should never call fn unless type is array', ->
+      everyTypeExcept 'array', (other) ->
+        o = new RObject()
+        calls = 0
+        o.subscribe ->
+          calls++
+        o.set other.value()
+        assert.strictEqual calls, 0
 
 
 # describe '#add()', ->

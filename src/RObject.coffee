@@ -3,22 +3,18 @@ do ->
     class RObject extends EventEmitter
       constructor: (val, opts={}) ->
 
-        # About _props and _elements:
-        # _props and _elements contain the RObject by property or array index
-        # once a prop or element is added it never changes so for example
-        # when an array item is spliced in a way that shifts items
-        # down in the array, _elements will stay the same and will not
-        # be shifted, their values will be updated to the new values
-        # at their relevant indexes
-        @_props = {}
+        # rCache is the lazily created vivified version of _val
+        # when _sync is called its values are synced back to _val
+        # its contents are wiped when _val is changed
+        # it is spliced upon when _val is spliced
+        @_rCache = []
 
-        # _elements is a 1:1 lazy mapping of @_value converted to RObjects
-        # when items are spliced in or out of @_val they are also spliced on @_elements
-        @_elements = []
-        # _ats is a lazy storage for RObjects that hold the live value of elements
-        # at the given offset
-        # when items are spliced in or out of @_val _ats don't move around,
-        # their values are just updated to the new value at given offset
+        # when someone does .prop('a') or .at(1) we need to always update the value
+        # that is returned with the value that is at 'a' or '0'
+        # these are the values that are returned
+        # these are lazily filled and updated over time to always represent the
+        # values at each relevant position or location
+        @_props = {}
         @_ats = []
 
         @set val
@@ -38,8 +34,8 @@ do ->
         switch @_type
           when 'array'
             for item, i in @_val
-              if @_elements[i]
-                @_val[i] = @_elements[i].value()
+              if @_rCache[i]
+                @_val[i] = @_rCache[i].value()
           when 'object'
             for own name of @_val
               if @_props[name]
@@ -64,6 +60,11 @@ do ->
         previousType = @_type
         @_val = val
 
+        if previousType == 'proxy'
+          previousValue.off 'change', @_emitChange
+
+        @_rCache = []
+
         @_type = RObject.typeFromNative @_val
         @_rRefType?.set @_type
         @_rtype?.set if @_type is 'proxy' then @_val.type() else @_type
@@ -73,10 +74,10 @@ do ->
             #todo: is this length change fired too soon?
             @_rlength?.set @_val.length
             for value, i in @_val
-              if @_elements[i]
-                @_elements[i].set value
+              if @_rCache[i]
+                @_rCache[i].set value
               else if value instanceof RObject
-                @_elements[i] = value
+                @_rCache[i] = value
 
           when 'string'
             @_rlength?.set @_val.length
@@ -93,22 +94,29 @@ do ->
 
 
           when 'proxy'
-            @_val.on 'change', =>
-              @emit 'change'
-
-        @_refreshAts()
+            @_val.on 'change', @_emitChange
 
         # we need to keep the empty props references around but just empty them
-        for name, prop of @_props
-          if previousType == 'object' && !@_val?[name]?
-            prop.set null
-        #todo: this for arrays?
+        switch previousType
+          when 'object'
+            for name, prop of @_props
+              if !@_val?[name]?
+                prop.set null
+
+          when 'array'
+            @_refreshAts()
 
         @emit 'change'
         this
 
+      _emitChange: =>
+        @emit 'change'
+
       set: (val) ->
-        return @_val.set val if @_type == 'proxy'
+        if @ == val
+          throw "bad"
+        if @_type == 'proxy'
+          return @_val.set val
         @refSet val
 
       #todo: optimize out this fn and run only on indexes that change
@@ -117,7 +125,7 @@ do ->
           when 'array'
             for i in [0..@_val.length]
               if @_ats[i]
-                @_ats[i].refSet @_elements[i] || @_val[i]
+                @_ats[i].refSet @_rCache[i] || @_val[i]
 
           else
             # null everything out
@@ -149,14 +157,14 @@ do ->
         child = new RObject()
         update = =>
           indexVal = if index instanceof RObject then index.value() else index
-          # it is important that elements in _ats are proxied to the item in _elements at index
+          # it is important that elements in _ats are proxied to the item in _rCache at index
           @_ats[indexVal] or= new RObject(
-            @_elements[indexVal] or= new RObject(@_val[indexVal])
+            @_rCache[indexVal] or= new RObject(@_val[indexVal])
           )
 
           #todo: what does this do?
           if @_type is 'array'
-            @_val[indexVal] = @_elements[indexVal]
+            @_val[indexVal] = @_rCache[indexVal]
           child.refSet @_ats[indexVal]
 
         if index instanceof RObject
@@ -168,7 +176,8 @@ do ->
         child = new RObject()
         cb = =>
           operandValues = (operand.value() for operand in operands)
-          child.set handler @_val, operandValues...
+
+          child.set handler @value(), operandValues...
         @on 'change', cb
         for operand in operands
           operand.on 'change', cb
@@ -184,13 +193,13 @@ do ->
 
       inverse: ->
         @combine (value) =>
-          switch @_type
+          switch @type().value()
             when 'boolean'
               !value
             when 'number'
               -value
             else
-              value
+              null
 
 
       add: (items, opts) ->
@@ -223,12 +232,12 @@ do ->
             rItemsToAdd = for item, i in itemsToAdd
               if item instanceof RObject then item else new RObject(item)
 
-            # since _elements is sparse, make sure index exists so splice works properly
-            @_elements[index] ?= undefined
+            # since _rCache is sparse, make sure index exists so splice works properly
+            @_rCache[index] ?= undefined
 
-            rRemoved = @_elements.splice index, numToRemove, rItemsToAdd...
+            rRemoved = @_rCache.splice index, numToRemove, rItemsToAdd...
 
-            # _elements is lazily created so make sure the things we just spliced off are RObjects
+            # _rCache is lazily created so make sure the things we just spliced off are RObjects
             if numToRemove
               for i in [0..numToRemove - 1]
                 rRemoved[i] or= new RObject(@_val[index + i])
@@ -250,85 +259,98 @@ do ->
           else
             @
 
-      # filter: (passFail) ->
-      #   child = new RObject()
+      filter: (passFail) ->
+        child = new RObject()
 
-      #   addToChild = (items, {index, noListen}) =>
-      #     # find the nearest preceding item in parent that is also in child
-      #     parentIndex = index
-      #     while (childIndex = child.value().indexOf(@_val[parentIndex])) == -1
-      #       --parentIndex
+        addToChild = (items, {index, noListen}) =>
+          # find the nearest preceding item in parent that is also in child
+          parentIndex = index
+          while (childIndex = child.value().indexOf(@_val[parentIndex])) == -1
+            --parentIndex
 
-      #       if parentIndex < 0
-      #         break
+            if parentIndex < 0
+              break
 
-      #     passing = for item, i in items
-      #       passes = passFail item
-      #       updatee = do (i, passes, item) =>
-      #         =>
-      #           # console.log @_val.indexOf(item)
-      #           if passes.value()
-      #             addToChild [item], index: index + i, noListen: true
-      #           else
-      #             removeFromChild [item], index: index + i
-
-
-      #       passes.on 'change', updatee if !noListen
-
-      #       if passes.value()
-      #         item
-      #       else
-      #         continue
-
-      #     if passing.length
-      #       child.add passing, index: childIndex + 1
+          passing = for item, i in items
+            passes = passFail item
+            updatee = do (i, passes, item) =>
+              =>
+                # console.log @_val.indexOf(item)
+                if passes.value()
+                  addToChild [item], index: index + i, noListen: true
+                else
+                  removeFromChild [item], index: index + i
 
 
-      #   removeFromChild = (items, {index}) =>
-      #     # find the index of the first item removed (if any) that is also in child
-      #     removedIndex = 0
-      #     while (childIndex = child.value().indexOf(items[removedIndex])) == -1
-      #       ++removedIndex
+            passes.on 'change', updatee if !noListen
 
-      #       if removedIndex >= items.length
-      #         # none of the removed items were in child, nothing to do
-      #         return
+            if passes.value()
+              item
+            else
+              continue
 
-      #     # now removedIndex is the index of the first item in items that was in child
-      #     #  and childIndex is the index of that item in child
-      #     # we now need to start removing items
-      #     #  keeping in mind not all items are in child so we may have to skip some
-
-      #     while removedIndex < items.length && childIndex < child.value().length
-      #       match = items[removedIndex] == child.value()[childIndex]
-
-      #       if match
-      #         child.splice childIndex, 1
-      #         ++removedIndex
-      #       else
-      #         ++childIndex
-
-      #   update = =>
-      #     switch @_type
-      #       when 'array'
-      #         child.set []
-      #         # for item in @_val
-      #         #   if passFail(item).value()
-      #         #     item
-      #         #   else
-      #         #     continue
-      #         addToChild @_val, index: 0
-      #       else
-      #         child.set null
+          if passing.length
+            child.add passing, index: childIndex + 1
 
 
-      #   @on 'add', addToChild
-      #   @on 'remove', removeFromChild
+        removeFromChild = (items, {index}) =>
+          # find my index of the first item removed (if any) that is also in child
+          removedIndex = 0
+          #todo: is it okay to assume child.elements is vivified? we shouldn't reach into child
+          while (childIndex = child._rCache.indexOf(items[removedIndex])) == -1
+            ++removedIndex
 
-      #   @on 'change', update
-      #   update()
+            if removedIndex >= items.length
+              # none of the removed items were in child, nothing to do
+              return
 
-      #   child
+          # now removedIndex is my index of the first item that is in child
+          #  and childIndex is childs index of that item
+          # we now start removing items
+          #  keeping in mind not all items are in child so we may have to skip some
+
+          while removedIndex < items.length && childIndex < child._rCache.length
+            match = items[removedIndex] == child._rCache[childIndex]
+
+            if match
+              child.splice childIndex, 1
+              ++removedIndex
+            else
+              ++childIndex
+
+        update = =>
+          switch @_type
+            when 'array'
+              child.set []
+              # for item in @_val
+              #   if passFail(item).value()
+              #     item
+              #   else
+              #     continue
+              @_vivifyAll()
+              addToChild @_rCache, index: 0
+            else
+              child.set null
+
+
+        @on 'add', addToChild
+        @on 'remove', removeFromChild
+
+        @on 'change', update
+        update()
+
+        child
+
+      _vivifyAll: ->
+        return if @_type != 'array'
+        @_vivifySpan 0, @_val.length - 1
+
+      _vivifySpan: (index, howMany) ->
+        return if @_type != 'array'
+        for i in [index..howMany]
+          @_rCache[i] or= new RObject(@_val[i])
+
+        null
 
 
       # reduce: (reducer, initial) ->
@@ -371,7 +393,7 @@ do ->
           child.set switch @_type
             when 'array'
               for item, i in @_val
-                transform @_elements[i] or= new RObject(@_val[i])
+                transform @_rCache[i] or= new RObject(@_val[i])
             else
               null
 
@@ -390,18 +412,19 @@ do ->
 
         child
 
-      # subscribe: (handler) ->
-      #   update = =>
-      #     if @_type == 'array'
-      #       for item, index in @_val
-      #         handler item, {index}
+      subscribe: (handler) ->
+        update = =>
+          @_vivifyAll()
+          if @_type == 'array'
+            for item, index in @_rCache
+              handler item, {index}
 
-      #   @on 'add', (added, {index}) ->
-      #     for item, i in added
-      #       handler item, {index: index + i}
+        @on 'add', (added, {index}) ->
+          for item, i in added
+            handler item, {index: index + i}
 
-      #   @on 'change', update
-      #   update()
+        @on 'change', update
+        update()
 
       # subtract: (operand) ->
       #   @combine operand, (aVal, bVal) ->
@@ -435,9 +458,9 @@ do ->
         @combine operand, (aVal, bVal) ->
           aVal <= bVal
 
-      # is: (operand) ->
-      #   @combine operand, (aVal, bVal) ->
-      #     aVal == bVal
+      is: (operand) ->
+        @combine operand, (aVal, bVal) ->
+          aVal == bVal
 
       # negate: ->
       #   @combine RNumber, (val) ->
