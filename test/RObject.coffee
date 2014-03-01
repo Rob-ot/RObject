@@ -5,10 +5,9 @@ _clone = require 'lodash.clone'
 RObject = require '../src/RObject'
 
 # never ever ever use assert.equal, 8 == ['8'] // true
-
-#todo: test empty cases and stuff
-
 # everything that returns an RObject should handle type changes of self
+
+#todo: test empty cases
 
 # #watch()
 
@@ -431,26 +430,6 @@ describe '#value()', ->
       o.prop 'cat', 'mouse'
       assert.strictEqual o.value().cat, 'mouse'
 
-    #todo: dont assign the RObject to _val, just assign the value, it will be updated when sync is called
-    it 'should modify object passed in for changed values', ->
-      original = {a: 'aee'}
-      o = new RObject(original)
-      o.prop 'a', 'lol'
-      assert.strictEqual original.a.value(), 'lol'
-
-    it 'should modify object passed in for new values added via prop', ->
-      original = {}
-      o = new RObject(original)
-      o.prop 'b', 'bbq'
-      assert.strictEqual original.b.value(), 'bbq'
-
-    it 'should modify object passed in for new values added by set on prop', ->
-      original = {}
-      o = new RObject(original)
-      b = o.prop 'b'
-      b.set 'bbq'
-      assert.strictEqual original.b.value(), 'bbq'
-
     it 'should give native value for items that have had a property accessed', ->
       o = new RObject({ d: false })
       o.prop 'd'
@@ -789,7 +768,7 @@ describe '#inverse()', ->
       assert.strictEqual inverse.value(), -3
 
   describe 'proxy', ->
-    it.only 'should inverse a proxied number', ->
+    it 'should inverse a proxied number', ->
       original = new RObject(7)
       proxy = new RObject(original)
       inverse = proxy.inverse()
@@ -1079,88 +1058,159 @@ describe '#map()', ->
 
 
 #todo: refector to use 1 assert vvvvvvv
+#todo: text truthiness and falsyness
 describe '#filter()', ->
   isEven = (num) ->
     num.mod(new RObject(2)).is(new RObject(0))
 
   describe 'type: Array', ->
-    it 'should filter initial items', ->
-      o = new RObject([4, 5, 6])
-      evens = o.filter isEven
-      assert.deepEqual evens.value(), [4, 6]
+    # all arrays tested tests should start with a fail and pass and
+    # should end with a pass and fail
 
-    it 'should filter added items', ->
-      o = new RObject([4, 5, 6])
-      evens = o.filter isEven
-      o.add new RObject(7)
-      assert.deepEqual evens.value(), [4, 6]
-      o.add new RObject(8)
-      assert.deepEqual evens.value(), [4, 6, 8]
-
-    it 'should filter added items when more than one is added at a time', ->
-      o = new RObject([4, 5, 6])
-      evens = o.filter isEven
-      o.add [new RObject(7), new RObject(8)]
-      assert.deepEqual evens.value(), [4, 6, 8]
-
-    it 'should filter added items and put them in the correct place when spliced', ->
-      o = new RObject([1, 2, 4, 3, 3, 5, 9, 12])
-      evens = o.filter isEven
-      o.splice 5, 0, new RObject(7), new RObject(8), new RObject(9), new RObject(10)
-      assert.deepEqual evens.value(), [2, 4, 8, 10, 12]
-
-    it 'should filter added items and put them in the correct place when spliced at position 0', ->
-      o = new RObject([3, 4])
-      evens = o.filter isEven
-      o.splice 0, 0, new RObject(2)
-      assert.deepEqual evens.value(), [2, 4]
-
-    it 'should remove items that are removed from the source', ->
-      source = new RObject([
-        new RObject(3)
-        new RObject(4)
-        new RObject(3) # remove
-        new RObject(8) # remove
-        new RObject(2) # remove
-        new RObject(5)
-        new RObject(6)
-      ])
-      evens = source.filter isEven
-      source.splice 2, 3
-      assert.deepEqual evens.value(), [4, 6]
-
-    it 'should always call back with an RObject', ->
-      o = new RObject([3])
+    it 'should call back with an RObject for initial items', ->
+      o = new RObject [3]
       isRObject = false
       evens = o.filter (val) ->
         isRObject = val instanceof RObject
-        new RObject(true)
-
+        new RObject true
       assert.strictEqual isRObject, true
 
-    it 'should update filter when given boolean changes', ->
-      first = new RObject(3)
-      o = new RObject([first])
-      evens = o.filter isEven
-      first.set 4
-      assert.deepEqual evens.value(), [4]
-      first.set 3
-      assert.deepEqual evens.value(), []
+    it 'should call back with an RObject for dynamically added items', ->
+      o = new RObject []
+      isRObject = false
+      evens = o.filter (val) ->
+        isRObject = val instanceof RObject
+        new RObject true
+      o.splice 0, 0, 3
+      assert.strictEqual isRObject, true
 
-    it 'should update filter when given boolean changes for dynamically added items', ->
-      four = new RObject(4)
-      o = new RObject([2, 3, 5, 6])
+    it 'should filter initial items', ->
+      o = new RObject([1, 2, 3, 4, 5, 6, 7])
       evens = o.filter isEven
-      o.splice 2, 0, four
-      four.set 4
       assert.deepEqual evens.value(), [2, 4, 6]
-      four.set 3
-      assert.deepEqual evens.value(), [2, 6]
-      # do it again to make sure it is releasing event listeners and stuff
-      four.set 4
+
+    it 'should filter items added at an index', ->
+      o = new RObject([1, 2, 5, 6, 7])
+      evens = o.filter isEven
+      o.splice 2, 0, 3, 4
       assert.deepEqual evens.value(), [2, 4, 6]
-      four.set 3
-      assert.deepEqual evens.value(), [2, 6]
+
+    it 'should filter items added at the beginning', ->
+      o = new RObject([3, 4, 5, 6, 7])
+      evens = o.filter isEven
+      o.splice 0, 0, 1, 2
+      assert.deepEqual evens.value(), [2, 4, 6]
+
+    it 'should filter items added at the end', ->
+      o = new RObject([1, 2, 3, 4, 5])
+      evens = o.filter isEven
+      o.splice 4, 0, 6, 7
+      assert.deepEqual evens.value(), [2, 4, 6]
+
+    it 'should filter added items when it starts as empty', ->
+      o = new RObject []
+      filtered = o.filter -> new RObject true
+      o.splice 0, 0, 1, 2, 3, 4, 5, 6, 7
+      assert.deepEqual filtered.value(), [1, 2, 3, 4, 5, 6, 7]
+
+    it 'should filter added items when a single passing value is added', ->
+      o = new RObject [1, 2, 3, 5, 6, 7]
+      evens = o.filter isEven
+      o.splice 2, 0, 4
+      assert.deepEqual evens.value(), [2, 4, 6]
+
+    it 'should filter added items when a single failing value is added', ->
+      o = new RObject [1, 2, 3, 4, 6, 7]
+      evens = o.filter isEven
+      o.splice 3, 0, 5
+      assert.deepEqual evens.value(), [2, 4, 6]
+
+    it 'should remove items that are removed from the source', ->
+      source = new RObject [1, 2, 3, 11, 12, 13, 4, 5, 6, 7]
+      evens = source.filter isEven
+      source.splice 3, 3
+      assert.deepEqual evens.value(), [2, 4, 6]
+
+    it 'should add initial items when pass/fail boolean changes to pass', ->
+      passes = new RObject false
+      o = new RObject [1, 2, 3]
+      filtered = o.filter -> passes
+      passes.set true
+      assert.deepEqual filtered.value(), [1, 2, 3]
+
+    it 'should remove initial items when pass/fail boolean changes to fail', ->
+      passes = new RObject true
+      o = new RObject [1, 2, 3]
+      filtered = o.filter -> passes
+      passes.set false
+      assert.deepEqual filtered.value(), []
+
+    it 'should add dynamically added items when pass/fail boolean changes to pass', ->
+      passes = new RObject false
+      o = new RObject []
+      filtered = o.filter -> passes
+      o.splice 0, 0, 1, 2, 3
+      passes.set true
+      assert.deepEqual filtered.value(), [1, 2, 3]
+
+    it 'should remove dynamically added items when pass/fail boolean changes to fail', ->
+      passes = new RObject true
+      o = new RObject []
+      filtered = o.filter -> passes
+      o.splice 0, 0, 1, 2, 3
+      passes.set false
+      assert.deepEqual filtered.value(), []
+
+
+    it 'should handle add after source has been shifted left', ->
+      item = new RObject 7
+      o = new RObject [1, 2, 5, 6, item, 9, 10]
+      evens = o.filter isEven
+      o.splice 2, 2
+      item.set 8
+      assert.deepEqual evens.value(), [2, 8, 10]
+
+    it 'should handle remove after source has been shifted left', ->
+      item = new RObject 8
+      o = new RObject [1, 2, 5, 6, item, 9, 10]
+      evens = o.filter isEven
+      o.splice 2, 2
+      item.set 7
+      assert.deepEqual evens.value(), [2, 10]
+
+    it 'should handle add after source has been shifted right', ->
+      item = new RObject 7
+      o = new RObject [1, 2, item, 9, 10]
+      evens = o.filter isEven
+      o.splice 2, 0, 5, 6
+      item.set 8
+      assert.deepEqual evens.value(), [2, 6, 8, 10]
+
+    it 'should handle remove after source has been shifted right', ->
+      item = new RObject 8
+      o = new RObject [1, 2, item, 9, 10]
+      evens = o.filter isEven
+      o.splice 2, 0, 5, 6
+      item.set 7
+      assert.deepEqual evens.value(), [2, 6, 10]
+
+    # it 'should handle item removed, then added then filter fail then filter pass', ->
+    #   o = new RObject [new RObject(8)]
+    #   passes = new RObject true
+    #   filtered = o.filter -> passes
+
+    #   o.splice 0, 1
+    #   o.splice 0, 0, new RObject(9)
+
+    #   console.log 'passes.set false'
+    #   passes.set false
+    #   console.log 'passes.set true'
+    #   passes.set true
+
+    #   # console.log 'filtered result', filtered.
+
+    #   assert.deepEqual filtered.value(), [9]
+
 
     it 'should maintain order of filtered arrays', ->
       o = new RObject([1, 2, 3, 4, 5, 6])
@@ -1168,6 +1218,7 @@ describe '#filter()', ->
       o.at(3).set 11
       o.at(3).set 4
       assert.deepEqual evens.value(), [2, 4, 6]
+
 
 
   it 'should handle dynamic type change', ->
@@ -1622,6 +1673,10 @@ describe '#prop()', ->
       o = new RObject {}
       o.prop 'great', undefined
       assert.strictEqual null, o.prop('great').value()
+
+    # it 'should not allow access to array items of the same name', ->
+    #   o = new RObject [6]
+    #   assert.strictEqual null, o.prop(0).value()
 
   describe 'type: Other', ->
     it 'should give empty', ->

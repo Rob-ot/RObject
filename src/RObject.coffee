@@ -14,8 +14,11 @@ do ->
         # these are the values that are returned
         # these are lazily filled and updated over time to always represent the
         # values at each relevant position or location
-        @_props = {}
         @_ats = []
+
+        # for objects _props is used as both rCache and _ats since there is
+        # never any splicing happening
+        @_props = {}
 
         @set val
 
@@ -34,11 +37,11 @@ do ->
         switch @_type
           when 'array'
             for item, i in @_val
-              if @_rCache[i]
+              if @_rCache[i]?
                 @_val[i] = @_rCache[i].value()
           when 'object'
             for own name of @_val
-              if @_props[name]
+              if @_props[name]?
                 @_val[name] = @_props[name].value()
 
       type: ->
@@ -143,8 +146,13 @@ do ->
         update = =>
           nameVal = if name instanceof RObject then name.value() else name
           @_props[nameVal] or= new RObject(@_val?[nameVal])
-          if @_type is 'object'
-            @_val[nameVal] = @_props[nameVal]
+
+          # mark this property in _val to make sure it will be iterated over in _sync
+          # would it be better to iterate through a combined and uniqued
+          # list of _val keys and _props keys?
+          if @_type is 'object' && @_val[nameVal] == undefined
+            @_val[nameVal] = undefined
+
           child.refSet @_props[nameVal]
 
         if name instanceof RObject
@@ -176,7 +184,6 @@ do ->
         child = new RObject()
         cb = =>
           operandValues = (operand.value() for operand in operands)
-
           child.set handler @value(), operandValues...
         @on 'change', cb
         for operand in operands
@@ -199,7 +206,7 @@ do ->
             when 'number'
               -value
             else
-              null
+              value
 
 
       add: (items, opts) ->
@@ -260,14 +267,38 @@ do ->
             @
 
       filter: (passFail) ->
+
         child = new RObject()
+        passChangeHandlers = []
+
+        # self = this
+        # passings = @map (value) ->
+        #   passFail value
+
+        # # handleAdd = ->
+        # #   console.log 'handleAdd', @
+
+        # #todo: use subscribe here?
+        # passings.on 'add', (passesGroup) ->
+        #   for passes in passesGroup
+        #     passes.on 'change', handleAdd
+
+        # passings.reduce (prev, current, index) ->
+
+        # # a 1:1 mapping of this value to child indexes
+        # # we need to (quickly) know where to insert items in the child
+        # # with just a parent id, we use this to look those up
+        # # childIndexes[parentIndex] == childIndex of that item or null
+        # childIndexes = []
+
 
         addToChild = (items, {index, noListen}) =>
+          # starting at location the items were added,
           # find the nearest preceding item in parent that is also in child
-          parentIndex = index
+          parentIndex = index - 1
+          #todo: this needs to be searching for an instance not a value
           while (childIndex = child.value().indexOf(@_val[parentIndex])) == -1
-            --parentIndex
-
+            parentIndex--
             if parentIndex < 0
               break
 
@@ -275,14 +306,15 @@ do ->
             passes = passFail item
             updatee = do (i, passes, item) =>
               =>
-                # console.log @_val.indexOf(item)
                 if passes.value()
                   addToChild [item], index: index + i, noListen: true
                 else
                   removeFromChild [item], index: index + i
 
-
+            #todo: test noListen
             passes.on 'change', updatee if !noListen
+            console.log 'set passChangeHandler', index + i
+            passChangeHandlers.splice index + i, 0, [passes, updatee]
 
             if passes.value()
               item
@@ -313,36 +345,38 @@ do ->
             match = items[removedIndex] == child._rCache[childIndex]
 
             if match
+              # console.log 'removeFromChild', child[childIndex]
               child.splice childIndex, 1
+              [passes, updatee] = passChangeHandlers[childIndex]
+              # passes.off 'change', updatee
+              passChangeHandlers.splice childIndex, 1
+              console.log 'removing passChangeHandler', childIndex
+
               ++removedIndex
             else
               ++childIndex
 
-        update = =>
+        change = =>
+          while passChangeHandler = passChangeHandlers.pop()
+            passChangeHandler[0].off 'change', passChangeHandler[1]
           switch @_type
             when 'array'
-              child.set []
-              # for item in @_val
-              #   if passFail(item).value()
-              #     item
-              #   else
-              #     continue
+              child.set [] #todo: test and fix double change of child
               @_vivifyAll()
               addToChild @_rCache, index: 0
             else
               child.set null
 
-
         @on 'add', addToChild
         @on 'remove', removeFromChild
 
-        @on 'change', update
-        update()
+        @on 'change', change
+        change()
 
         child
 
       _vivifyAll: ->
-        return if @_type != 'array'
+        return if @_type != 'array' || !@_val.length
         @_vivifySpan 0, @_val.length - 1
 
       _vivifySpan: (index, howMany) ->
@@ -473,34 +507,12 @@ do ->
 
       #todo: make work on arrays
       indexOf: (operand) ->
-        switch @_type
-          when 'string'
-            @combine operand, (aVal, bVal) ->
+        @combine operand, (aVal, bVal) =>
+          switch @type().value()
+            when 'string', 'array'
               aVal.indexOf bVal
-          else
-            @ #todo: return invalid or 0 or something?
-
-    # for own method, original of RObject.prototype
-    #   continue if method in ['constructor', 'value', 'combine', '_refreshAts', 'prop', 'splice', 'refValue', 'at', 'type', 'refType', 'refSet', 'set', 'inverse', '_sync', 'map']
-    #   do (method, original) ->
-    #     RObject.prototype[method] = ->
-    #       child = new RObject()
-    #       originalArguments = arguments
-    #       update = ->
-    #         child.refSet if @_type == 'proxy'
-    #           @_val[method].apply @_val, originalArguments
-    #         else
-    #           original.apply @, originalArguments
-
-    #       @on 'change', update
-    #       # for argument in arguments
-    #       #   if argument instanceof RObject
-    #       #     argument.on 'change', ->
-    #       #       console.log 'arg changed'
-    #       #       update()
-    #       update.call @
-
-    #       child
+            else
+              -1
 
     RObject.typeFromNative = (object) ->
       if object == null || object == undefined
