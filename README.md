@@ -59,3 +59,9 @@ toNumber, etc?
 async map
 throttle
 groupMap
+
+getters/virtuals
+
+an easy way to track what instance you're looking at in js debugger, maybe give each instance a name and that name is added on to as it passes through monads
+
+merge

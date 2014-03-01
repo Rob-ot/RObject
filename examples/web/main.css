@@ -1,0 +1,33 @@
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.taskSection {
+  padding: 10px 0;
+}
+.taskSection.empty {
+  display: none;
+}
+
+.task span {
+  cursor: pointer;
+}
+
+.tagList, .tagList .tagsContainer {
+  display: inline;
+}
+
+.tag {
+
+}
+.tag .delete {
+  background: 0;
+  border: 0;
+  opacity: 0.2;
+}
+.tag:hover .delete, .tag .delete:focus {
+  opacity: 1;
+}

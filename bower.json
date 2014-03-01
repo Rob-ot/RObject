@@ -1,0 +1,29 @@
+{
+  "name": "RTypes",
+  "version": "0.0.0",
+  "authors": [
+    "Rob Middleton <dsmlover@gmail.com>"
+  ],
+  "main": "RObject.js",
+  "keywords": [
+    "reactive"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "eventEmitter": "~4.2.6",
+    "jquery": "~1.10.2",
+    "requirejs": "~2.1.9",
+    "coffee-script": "~1.7.1",
+    "require-cs": "~0.4.4"
+  },
+  "resolutions": {
+    "coffee-script": "~1.6.3"
+  }
+}
