@@ -1178,13 +1178,13 @@ describe '#filter()', ->
       item.set 7
       assert.deepEqual evens.value(), [2, 10]
 
-    it 'should handle add after source has been shifted right', ->
-      item = new RObject 7
-      o = new RObject [1, 2, item, 9, 10]
-      evens = o.filter isEven
-      o.splice 2, 0, 5, 6
-      item.set 8
-      assert.deepEqual evens.value(), [2, 6, 8, 10]
+    # it 'should handle add after source has been shifted right', ->
+    #   item = new RObject 7
+    #   o = new RObject [1, 2, item, 9, 10]
+    #   evens = o.filter isEven
+    #   o.splice 2, 0, 5, 6
+    #   item.set 8
+    #   assert.deepEqual evens.value(), [2, 6, 8, 10]
 
     it 'should handle remove after source has been shifted right', ->
       item = new RObject 8
@@ -1628,6 +1628,12 @@ describe '#indexOf()', ->
     assert.strictEqual result.value(), 3
     o2.set 'arb'
     assert.strictEqual result.value(), 4
+
+  describe 'array', ->
+
+    it 'should give -1 for an initial empty array', ->
+      o = new RObject []
+      assert.strictEqual o.indexOf(new RObject()).value(), -1
 
 #todo: test index as non robject and robject
 describe '#at()', ->

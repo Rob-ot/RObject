@@ -313,7 +313,7 @@ do ->
 
             #todo: test noListen
             passes.on 'change', updatee if !noListen
-            console.log 'set passChangeHandler', index + i
+            # console.log 'set passChangeHandler', index + i
             passChangeHandlers.splice index + i, 0, [passes, updatee]
 
             if passes.value()
@@ -350,7 +350,7 @@ do ->
               [passes, updatee] = passChangeHandlers[childIndex]
               # passes.off 'change', updatee
               passChangeHandlers.splice childIndex, 1
-              console.log 'removing passChangeHandler', childIndex
+              # console.log 'removing passChangeHandler', childIndex
 
               ++removedIndex
             else
@@ -507,10 +507,13 @@ do ->
 
       #todo: make work on arrays
       indexOf: (operand) ->
+        # how do we handle passed in RObjects?! check by value or ref?
         @combine operand, (aVal, bVal) =>
           switch @type().value()
-            when 'string', 'array'
+            when 'string'
               aVal.indexOf bVal
+            when 'array'
+              -1
             else
               -1
 
