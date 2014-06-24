@@ -7,6 +7,15 @@ Sub-properties and array items are vivified to RObjects lazily and only as neede
 
 Events should only be fired once object has been fully modified to its new state, events should not be fired with the state partially modified.
 
+
+# v1
+
+array push, pop, shift, unshift (append prepend?)
+
+all/most standard js array operations
+
+
+
 # ToDo
 
 a nice api for grouping events, like .pauseEvents() and later resume to fire the least amount of events needed to get up to date. (coalescence)

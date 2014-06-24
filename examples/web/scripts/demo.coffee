@@ -53,9 +53,9 @@ define (require) ->
   tagList = (tags) ->
     $el = $ '<nav>', class: 'tagList'
     $tags = $ '<div>', class: 'tagsContainer'
-    $addTag = $ '<button>', class: 'addTag', html: 'Add tag'
+    # $addTag = $ '<button>', class: 'addTag', html: 'Add tag'
 
-    $el.append $tags, $addTag
+    $el.append $tags#, $addTag
 
     tagViews = tags.map addTag
 
@@ -70,8 +70,8 @@ define (require) ->
       for view in views
         $tags.children().eq(index).remove()
 
-    $addTag.click ->
-      tags.add new RObject 'new tag'
+    # $addTag.click ->
+    #   tags.add new RObject 'new tag'
       # tagViews.at(tagViews.length().subtract(new RObject(1))).value().select()
 
     $el

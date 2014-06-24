@@ -34,13 +34,15 @@ drinkingAge = new RObject(21)
 canDrink = user.prop('age').greaterThanOrEqual drinkingAge
 fullName = user.prop('fName').concat(new RObject(' ')).concat(user.prop('lName'))
 favoriteShows = user.prop('favorites').filter (fav) ->
-  fav.prop('type').is(new RObject('show'))
+  ret = fav.prop('type').is(new RObject('show'))
+  ret.watch (v) -> console.log("aaa", fav.prop('type'), ret.value())
+  ret
 
 
 
-console.log 'now', canDrink.toObject(), fullName.toObject(), favoriteShows.toObject()
+console.log 'now', canDrink.value(), fullName.value(), favoriteShows.value()
 
 
 setTimeout ->
-  console.log 'later', canDrink.toObject(), fullName.toObject(), favoriteShows.toObject()
+  console.log 'later', canDrink.value(), fullName.value(), favoriteShows.value()
 , 1000
