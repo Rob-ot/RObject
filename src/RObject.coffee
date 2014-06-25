@@ -52,7 +52,10 @@ do ->
         @_rRefType or= new RObject @_type
 
       length: ->
-        @_rlength or= new RObject @_val?.length
+        @_rlength or= new RObject if @_val instanceof RObject
+          @_val.length()
+        else
+          @_val?.length
 
       refSet: (val) ->
         val = null if val == undefined # undefined is translated to null
@@ -73,9 +76,11 @@ do ->
         @_rtype?.set if @_type is 'proxy' then @_val.type() else @_type
 
         #todo: is this length change fired too soon?
-        @_rlength?.set switch @_type
+        @_rlength?.refSet switch @_type
           when 'array', 'string'
             @_val.length
+          when 'proxy'
+            @_val.length()
           else
             null
 
@@ -96,7 +101,6 @@ do ->
                 # and its _props[name] is not set yet
                 # we can just use that same RObject
                 @_props[name] = value
-
 
           when 'proxy'
             @_val.on 'change', @_emitChange
@@ -120,8 +124,10 @@ do ->
       set: (val) ->
         if @ == val
           throw "bad"
+
         if @_type == 'proxy'
           return @_val.set val
+
         @refSet val
 
       #todo: optimize out this fn and run only on indexes that change
@@ -297,7 +303,7 @@ do ->
       #     else
       #       @
 
-      
+
       # filter: (passFail) ->
 
       #   child = new RObject()
@@ -466,7 +472,7 @@ do ->
 
       #   child
 
-      
+
       # subtract: (operand) ->
       #   @combine operand, (aVal, bVal) ->
       #     aVal - bVal

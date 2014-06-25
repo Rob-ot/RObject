@@ -561,6 +561,56 @@ describe '#length()', ->
     o.set [1, 2, 3, 4]
     assert.deepEqual changeValue, [1, 2, 3, 4]
 
+  it 'should update when value changes to a proxy', ->
+    o = new RObject('bbq')
+    length = o.length()
+    o.set new RObject('waaah')
+    assert.strictEqual length.value(), 5
+
+  it 'should fire change event when value changes to a proxy', ->
+    o = new RObject('bbq')
+    changes = 0
+    o.length().on 'change', -> changes++
+    o.set new RObject('waaah')
+    assert.strictEqual changes, 1
+  # do we need to worry about event fire and change order?
+
+  it 'should update when proxy value changes', ->
+    child = new RObject('bbq')
+    parent = new RObject(child)
+    newChild = new RObject('123456')
+    length = parent.length()
+    parent.refSet newChild
+    assert.strictEqual length.value(), 6
+
+  it 'should fire change event when proxy value changes', ->
+    child = new RObject('bbq')
+    parent = new RObject(child)
+    newChild = new RObject('123456')
+    changes = 0
+    parent.length().on 'change', -> changes++
+    parent.refSet newChild
+    assert.strictEqual changes, 1
+
+  it 'should update when changing from a proxy to a string', ->
+    o = new RObject new RObject('bbq')
+    len = o.length()
+    o.refSet('lolz')
+    assert.strictEqual len.value(), 4
+
+  it 'should update when changing from a proxy to an array', ->
+    o = new RObject new RObject('bbq')
+    len = o.length()
+    o.refSet([1, 2, 3, 4])
+    assert.strictEqual len.value(), 4
+
+  it 'should update when changing from a proxy to empty', ->
+    o = new RObject new RObject('bbq')
+    len = o.length()
+    o.refSet(null)
+    assert.strictEqual len.value(), null
+
+
 describe '#type()', ->
   it 'should give the correct type for numbers', ->
     assert.strictEqual new RObject(8).type().value(), 'number'
