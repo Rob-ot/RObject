@@ -998,42 +998,42 @@ describe '#subscribe()', ->
     it 'should call fn when type is dynamically changed to an array from empty', ->
       o = new RObject null
       calls = 0
-      o.subscribe (item, {index}) -> calls++
+      o.subscribe -> calls++
       o.set [1, 2]
       assert.strictEqual calls, 2
 
     it 'should call fn when type is dynamically changed to an array from number', ->
       o = new RObject 6
       calls = 0
-      o.subscribe (item, {index}) -> calls++
+      o.subscribe -> calls++
       o.set [1, 2]
       assert.strictEqual calls, 2
 
     it 'should call fn when type is dynamically changed to an array from string', ->
       o = new RObject 'asdf'
       calls = 0
-      o.subscribe (item, {index}) -> calls++
+      o.subscribe -> calls++
       o.set [1, 2]
       assert.strictEqual calls, 2
 
     it 'should call fn when type is dynamically changed to an array from boolean', ->
       o = new RObject true
       calls = 0
-      o.subscribe (item, {index}) -> calls++
+      o.subscribe -> calls++
       o.set [1, 2]
       assert.strictEqual calls, 2
 
     it 'should call fn when type is dynamically changed to an array from object', ->
       o = new RObject {a: 'aaa'}
       calls = 0
-      o.subscribe (item, {index}) -> calls++
+      o.subscribe -> calls++
       o.set [1, 2]
       assert.strictEqual calls, 2
 
     it 'should call fn when type is dynamically changed to an array another array', ->
       o = new RObject [1, 2]
       calls = 0
-      o.subscribe (item, {index}) -> calls++
+      o.subscribe -> calls++
       o.set [5, 6]
       assert.strictEqual calls, 4
 
@@ -1041,37 +1041,48 @@ describe '#subscribe()', ->
     it 'should not call fn when type is changed to empty', ->
       o = new RObject(234)
       calls = 0
-      o.subscribe (item, {index}) -> calls++
+      o.subscribe -> calls++
       o.set(null)
       assert.strictEqual calls, 0
 
     it 'should not call fn when type is changed to number', ->
       o = new RObject()
       calls = 0
-      o.subscribe (item, {index}) -> calls++
+      o.subscribe -> calls++
       o.set 6
       assert.strictEqual calls, 0
 
     it 'should not call fn when type is changed to string', ->
       o = new RObject()
       calls = 0
-      o.subscribe (item, {index}) -> calls++
+      o.subscribe -> calls++
       o.set 'asdf'
       assert.strictEqual calls, 0
 
     it 'should not call fn when type is changed to boolean', ->
       o = new RObject()
       calls = 0
-      o.subscribe (item, {index}) -> calls++
+      o.subscribe -> calls++
       o.set true
       assert.strictEqual calls, 0
 
     it 'should not call fn when type is changed to object', ->
       o = new RObject()
       calls = 0
-      o.subscribe (item, {index}) -> calls++
+      o.subscribe -> calls++
       o.set {b: 'bbq'}
       assert.strictEqual calls, 0
+
+    # proxy array add/splice
+    # does it even fire add event?
+
+    # it 'should call fn when switching to a proxy array', ->
+    #   o = new RObject()
+    #   calls = 0
+    #   o.subscribe -> calls++
+    #   o.set new RObject [1, 2, 3]
+    #   assert.strictEqual calls, 3
+
 
 
 #todo: test index as non robject and robject
