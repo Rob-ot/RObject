@@ -228,21 +228,6 @@ do ->
           else
             @
 
-      subscribe: (handler) ->
-        update = =>
-          @_vivifyAll()
-          if @_type == 'array'
-            for item, index in @_rCache
-              handler item, {index}
-
-        @on 'add', (added, {index}) ->
-          for item, i in added
-            handler item, {index: index + i}
-
-        @on 'change', update
-        update()
-
-
       _vivifyAll: ->
         return if @_type != 'array' || !@_val.length
         @_vivifySpan 0, @_val.length - 1
