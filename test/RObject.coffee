@@ -34,8 +34,6 @@ RObject = require '../src/RObject'
 
 #todo: type change event is fired before value changes
 
-# test length
-
 types = [
   'empty'
   'empty'
@@ -288,7 +286,6 @@ describe '#set()', ->
       assert.strictEqual removes, 0
 
 describe '#refSet', ->
-
   it 'should change the value to the set value for non-RObject values', ->
     o = new RObject()
     o.refSet 6
@@ -576,6 +573,13 @@ describe '#length()', ->
   # do we need to worry about event fire and change order?
 
   it 'should update when proxy value changes', ->
+    child = new RObject('123')
+    parent = new RObject(child)
+    length = parent.length()
+    child.set '12345'
+    assert.strictEqual length.value(), 5
+
+  it 'should update value changes from proxy to proxy', ->
     child = new RObject('bbq')
     parent = new RObject(child)
     newChild = new RObject('123456')
@@ -583,7 +587,7 @@ describe '#length()', ->
     parent.refSet newChild
     assert.strictEqual length.value(), 6
 
-  it 'should fire change event when proxy value changes', ->
+  it 'should fire change event when value changes from proxy to proxy', ->
     child = new RObject('bbq')
     parent = new RObject(child)
     newChild = new RObject('123456')
