@@ -974,76 +974,104 @@ describe '#subscribe()', ->
   describe 'type: Array', ->
     it 'should call fn for every item that is already in the array', ->
       o = new RObject([1, 2, 3])
-      calls = []
+      values = []
       o.subscribe (item) ->
-        calls.push item
-
-      assert.strictEqual calls.length, 3
-      assert.deepEqual (calls.map((o) -> o.value())), [1, 2, 3]
+        values.push item.value()
+      assert.deepEqual values, [1, 2, 3]
 
     it 'should call fn for items dynamically added', ->
       o = new RObject([])
+      values = []
       o.subscribe (item) ->
-        calls?.push item
-      calls = []
-      o.splice 0, 0, new RObject(1), new RObject(2), new RObject(3)
-
-      assert.strictEqual calls.length, 3
-      assert.deepEqual (calls.map((o) -> o.value())), [1, 2, 3]
+        values.push item.value()
+      o.splice 0, 0, 1, 2, 3
+      assert.deepEqual values, [1, 2, 3]
 
     it 'should include indexes of items added', ->
       o = new RObject([1, 2, 4, 5])
-      calls = []
       indexes = []
       o.subscribe (item, {index}) ->
-        calls.push item
         indexes.push index
-
-      o.splice 1, 1, new RObject(2), new RObject(3)
-
-      assert.strictEqual calls.length, 6
-      assert.deepEqual (calls.map((o) -> o.value())), [1, 2, 4, 5, 2, 3]
+      o.splice 1, 1, 2, 3
       assert.deepEqual indexes, [0, 1, 2, 3, 1, 2]
 
-    it 'should call fn when type is dynamically changed to an array', ->
-      everyTypeExcept 'array', (o) ->
-        calls = []
-        indexes = []
-        o.subscribe (item, {index}) ->
-          calls.push item
-          indexes.push index
+    it 'should call fn when type is dynamically changed to an array from empty', ->
+      o = new RObject null
+      calls = 0
+      o.subscribe (item, {index}) -> calls++
+      o.set [1, 2]
+      assert.strictEqual calls, 2
 
-        o.set [1, 2]
-        assert.strictEqual calls.length, 2
-        assert.deepEqual indexes, [0, 1]
+    it 'should call fn when type is dynamically changed to an array from number', ->
+      o = new RObject 6
+      calls = 0
+      o.subscribe (item, {index}) -> calls++
+      o.set [1, 2]
+      assert.strictEqual calls, 2
 
-    it 'should call fn when type is dynamically changed to array from another array', ->
-      o = new RObject([1, 2])
+    it 'should call fn when type is dynamically changed to an array from string', ->
+      o = new RObject 'asdf'
+      calls = 0
+      o.subscribe (item, {index}) -> calls++
+      o.set [1, 2]
+      assert.strictEqual calls, 2
 
-      calls = []
-      indexes = []
-      o.subscribe (item, {index}) ->
-        calls.push item
-        indexes.push index
+    it 'should call fn when type is dynamically changed to an array from boolean', ->
+      o = new RObject true
+      calls = 0
+      o.subscribe (item, {index}) -> calls++
+      o.set [1, 2]
+      assert.strictEqual calls, 2
 
-      assert.strictEqual calls.length, 2
+    it 'should call fn when type is dynamically changed to an array from object', ->
+      o = new RObject {a: 'aaa'}
+      calls = 0
+      o.subscribe (item, {index}) -> calls++
+      o.set [1, 2]
+      assert.strictEqual calls, 2
 
-      o.set [3, 4]
-
-      assert.deepEqual calls.map((o) -> o.value()), [1, 2, 3, 4]
-      assert.deepEqual indexes, [0, 1, 0, 1]
+    it 'should call fn when type is dynamically changed to an array another array', ->
+      o = new RObject [1, 2]
+      calls = 0
+      o.subscribe (item, {index}) -> calls++
+      o.set [5, 6]
+      assert.strictEqual calls, 4
 
   describe 'type: Other', ->
-    it 'should never call fn unless type is array', ->
-      everyTypeExcept 'array', (other) ->
-        o = new RObject()
-        calls = 0
-        o.subscribe ->
-          calls++
-        o.set other.value()
-        assert.strictEqual calls, 0
+    it 'should not call fn when type is changed to empty', ->
+      o = new RObject(234)
+      calls = 0
+      o.subscribe (item, {index}) -> calls++
+      o.set(null)
+      assert.strictEqual calls, 0
 
+    it 'should not call fn when type is changed to number', ->
+      o = new RObject()
+      calls = 0
+      o.subscribe (item, {index}) -> calls++
+      o.set 6
+      assert.strictEqual calls, 0
 
+    it 'should not call fn when type is changed to string', ->
+      o = new RObject()
+      calls = 0
+      o.subscribe (item, {index}) -> calls++
+      o.set 'asdf'
+      assert.strictEqual calls, 0
+
+    it 'should not call fn when type is changed to boolean', ->
+      o = new RObject()
+      calls = 0
+      o.subscribe (item, {index}) -> calls++
+      o.set true
+      assert.strictEqual calls, 0
+
+    it 'should not call fn when type is changed to object', ->
+      o = new RObject()
+      calls = 0
+      o.subscribe (item, {index}) -> calls++
+      o.set {b: 'bbq'}
+      assert.strictEqual calls, 0
 
 
 #todo: test index as non robject and robject
