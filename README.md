@@ -7,10 +7,13 @@ Sub-properties and array items are vivified to RObjects lazily and only as neede
 
 Events should only be fired once object has been fully modified to its new state, events should not be fired with the state partially modified.
 
+The advantage of reactive is it doesn't matter how you got to a state, that state is always
+the same. No race conditions?
+
 
 # v1
 
-array push, pop, shift, unshift (append prepend?)
+array at, push, pop, shift, unshift (append prepend?)
 
 all/most standard js array operations
 
@@ -50,7 +53,6 @@ o = new RObject({a: new RObject('a')})
 o.prop('a', new RObject('b')) # what happens?!!
 
 
-don't use at, use index
 
 #default() (sets to given value if source is empty)
 

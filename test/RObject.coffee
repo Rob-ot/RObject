@@ -966,34 +966,205 @@ describe '#splice()', ->
     o.splice 0, 0, new RObject(1)
     assert.deepEqual o.value(), [1, 2]
 
-  #todo: edge cases?
-
 
 #todo: test index as non robject and robject
 describe '#at()', ->
-  it 'should give item at the specified index', ->
-    a = new RObject([1, 2, 3])
-    assert.strictEqual a.at(0).value(), 1
-    assert.strictEqual a.at(1).value(), 2
-    assert.strictEqual a.at(2).value(), 3
+  describe 'types', ->
+    it 'should give correct value for array value in the middle of the array', ->
+      a = new RObject([1, 2, 3])
+      assert.strictEqual a.at(1).value(), 2
 
-  it 'should update item at index when array is changed', ->
-    a = new RObject([1, 3])
-    atIndex1 = a.at(1)
-    a.splice 1, 0, 2
-    assert.strictEqual atIndex1.value(), 2
+    it 'should give correct value for array value at index 0', ->
+      a = new RObject([1, 2, 3])
+      assert.strictEqual a.at(0).value(), 1
 
-  it 'should update item at index when index is changed', ->
-    index = new RObject(1)
-    a = new RObject([1, 2, 3])
-    atIndex = a.at(index)
-    assert.strictEqual atIndex.value(), 2
-    index.set 2
-    assert.strictEqual atIndex.value(), 3
+    it 'should give correct value for array value at the end of the array', ->
+      a = new RObject([1, 2, 3])
+      assert.strictEqual a.at(2).value(), 3
+
+    it 'should give correct value for non-array value', ->
+      o = new RObject('abcd')
+      assert.strictEqual o.at(1).value(), null
+
+    it 'should give correct value for proxy array value', ->
+      a = new RObject new RObject([1, 2, 3])
+      assert.strictEqual a.at(1).value(), 2
+
+    it 'should give correct value for proxy non-array value', ->
+      o = new RObject new RObject('abcd')
+      assert.strictEqual o.at(1).value(), null
+
+    it 'should give correct value after changing from array to array', ->
+      o = new RObject(['a', 'b', 'q'])
+      val = o.at(1)
+      o.refSet [1, 2, 3]
+      assert.strictEqual val.value(), 2
+
+    it 'should give correct value after changing from array to non-array', ->
+      o = new RObject([1, 2, 3])
+      val = o.at(1)
+      o.set 'abcd'
+      assert.strictEqual val.value(), null
+
+    it 'should give correct value after changing from array to proxy array', ->
+      o = new RObject(['a', 'b', 'q'])
+      val = o.at(1)
+      o.refSet new RObject [1, 2, 3]
+      assert.strictEqual val.value(), 2
+
+    it 'should give correct value after changing from array to proxy non-array', ->
+      o = new RObject([1, 2, 3])
+      val = o.at(1)
+      o.set new RObject 'abcd'
+      assert.strictEqual val.value(), null
+
+    it 'should give correct value after changing from non-array to array', ->
+      o = new RObject('abcd')
+      val = o.at(1)
+      o.set [1, 2, 3]
+      assert.strictEqual val.value(), 2
+
+    it 'should give correct value after changing from non-array to non-array', ->
+      o = new RObject('abcd')
+      val = o.at(1)
+      o.set 'bbq'
+      assert.strictEqual val.value(), null
+
+    it 'should give correct value after changing from non-array to proxy array', ->
+      o = new RObject('abcd')
+      val = o.at(1)
+      o.set new RObject [1, 2, 3]
+      assert.strictEqual val.value(), 2
+
+    it 'should give correct value after changing from non-array to proxy non-array', ->
+      o = new RObject('abcd')
+      val = o.at(1)
+      o.set new RObject 'bbq'
+      assert.strictEqual val.value(), null
+
+    it 'should give correct value after changing from proxy array to array', ->
+      o = new RObject new RObject(['a', 'b', 'c'])
+      val = o.at(1)
+      o.set [1, 2, 3]
+      assert.strictEqual val.value(), 2
+
+    it 'should give correct value after changing from proxy array to non-array', ->
+      o = new RObject new RObject(['a', 'b', 'c'])
+      val = o.at(1)
+      o.set 'asdf'
+      assert.strictEqual val.value(), null
+
+    it 'should give correct value after changing from proxy array to proxy array', ->
+      o = new RObject new RObject(['a', 'b', 'c'])
+      val = o.at(1)
+      o.set new RObject [1, 2, 3]
+      assert.strictEqual val.value(), 2
+
+    it 'should give correct value after changing from proxy array to proxy non-array', ->
+      o = new RObject new RObject(['a', 'b', 'c'])
+      val = o.at(1)
+      o.set new RObject 'asdf'
+      assert.strictEqual val.value(), null
+
+    it 'should give correct value after changing from proxy non-array to array', ->
+      o = new RObject new RObject('qwerty')
+      val = o.at(1)
+      o.set [1, 2, 3]
+      assert.strictEqual val.value(), 2
+
+    it 'should give correct value after changing from proxy non-array to non-array', ->
+      o = new RObject new RObject('qwerty')
+      val = o.at(1)
+      o.set 'asdf'
+      assert.strictEqual val.value(), null
+
+    it 'should give correct value after changing from proxy non-array to proxy array', ->
+      o = new RObject new RObject('qwerty')
+      val = o.at(1)
+      o.set new RObject [1, 2, 3]
+      assert.strictEqual val.value(), 2
+
+    it 'should give correct value after changing from proxy non-array to proxy non-array', ->
+      o = new RObject new RObject('qwerty')
+      val = o.at(1)
+      o.set new RObject 'asdf'
+      assert.strictEqual val.value(), null
+
+  describe 'objects', ->
+    it 'should not give value of object with the same name', ->
+      assert.strictEqual new RObject({0: 'lol'}).at(0).value(), null
+
+    it 'should not give value of object with the same name when value changes to object', ->
+      o = new RObject([1, 2, 3])
+      val = o.at(0)
+      o.set {0: 'lol'}
+      assert.strictEqual val.value(), null
+
+  describe 'array mutations', ->
+    it 'should update item at index when value is replaced', ->
+      a = new RObject([1, 3])
+      atIndex1 = a.at(1)
+      a.splice 1, 0, 2
+      assert.strictEqual atIndex1.value(), 2
+
+    it 'should clear result when item at index is shifted', ->
+      a = new RObject([1, 2, 3])
+      atIndex1 = a.at(1)
+      a.splice 1, 1
+      assert.strictEqual atIndex1.value(), 3
+
+    it 'should clear result when item at index goes away', ->
+      a = new RObject([1, 2, 3])
+      atIndex1 = a.at(1)
+      a.splice 1, 2
+      assert.strictEqual atIndex1.value(), null
+
+    it 'should clear result when item is added at index', ->
+      a = new RObject([1])
+      atIndex1 = a.at(1)
+      a.splice 1, 0, 2, 3
+      assert.strictEqual atIndex1.value(), 2
+
+
+  describe 'changing index', ->
+    it 'should update to new value when index changes', ->
+      o = new RObject [1, 2, 3, 4]
+      i = new RObject 1
+      val = o.at i
+      i.set 2
+      assert.strictEqual val.value(), 3
+
+
+  describe 'proxy', ->
+    it 'should change when value through proxy value changes', ->
+      mid = new RObject(2)
+      o = new RObject new RObject([1, mid, 4])
+      at1 = o.at(1)
+      mid.set(3)
+      assert.strictEqual at1.value(), 3
+
+    it 'should change proxy value when value changes', ->
+      mid = new RObject(2)
+      o = new RObject new RObject([1, mid, 4])
+      o.at(1).set(3)
+      assert.strictEqual mid.value(), 3
+
+    it 'should update item at index when index is changed', ->
+      index = new RObject(1)
+      a = new RObject([1, 2, 3])
+      atIndex = a.at(index)
+      assert.strictEqual atIndex.value(), 2
+      index.set 2
+      assert.strictEqual atIndex.value(), 3
 
 
 #when object passed to constructor is changed later but before .prop is called, does it need to use the constructed value? (lazily create propRefs)
 describe '#prop()', ->
+
+
+
+
+
   describe 'type: Object', ->
     it 'should allow getting properties of passed in the constructor', ->
       o = new RObject { eight: '8', nine: '9' }
@@ -1039,6 +1210,15 @@ describe '#prop()', ->
     result = o.prop propName
     propName.set 'b'
     assert.strictEqual result.value(), 'bbb'
+
+
+
+
+
+
+
+
+
 
 
 

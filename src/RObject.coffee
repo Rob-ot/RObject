@@ -1,4 +1,6 @@
 do ->
+  id = 0
+
   factory = (EventEmitter) ->
     class RObject extends EventEmitter
       constructor: (val, opts={}) ->
@@ -9,9 +11,7 @@ do ->
         # it is spliced upon when _val is spliced
         @_rCache = []
 
-        # when someone does .at(1) we need to always update the value
-        # that is returned with the value that is at '0'
-        # these are the values that are returned
+        # _ats[0] contains an RObject that always contains the value at index 0
         # these are lazily filled and updated over time to always represent the
         # values at each relevant position or location
         @_ats = []
@@ -19,6 +19,8 @@ do ->
         # for objects _props is used as both rCache and _ats since there is
         # never any splicing happening
         @_props = {}
+
+        @_id = id++
 
         @set val
 
@@ -58,7 +60,13 @@ do ->
           @_val?.length
 
       refSet: (val) ->
+        if @ == val
+          throw new Error "bad (refSet)"
+
         val = null if val == undefined # undefined is translated to null
+
+        # if RObject.typeFromNative(val) == 'proxy'
+        #   console.log 'setting', @_id, 's value to ', val._id
 
         return this if @_val == val # don't fire change event for the same value
 
@@ -92,6 +100,8 @@ do ->
               else if value instanceof RObject
                 @_rCache[i] = value
 
+            @_refreshAts()
+
           when 'object'
             for own name, value of @_val
               if @_props[name]
@@ -123,7 +133,7 @@ do ->
 
       set: (val) ->
         if @ == val
-          throw "bad"
+          throw new Error "bad"
 
         if @_type == 'proxy'
           return @_val.set val
@@ -174,15 +184,24 @@ do ->
         update = =>
           indexVal = if index instanceof RObject then index.value() else index
           # it is important that elements in _ats are proxied to the item in _rCache at index
-          @_ats[indexVal] or= new RObject(
-            @_rCache[indexVal] or= new RObject(@_val[indexVal])
-          )
+          val = if @_type == 'array' then @_val[indexVal] else null
 
-          #todo: what does this do?
-          if @_type is 'array'
-            @_val[indexVal] = @_rCache[indexVal]
-          child.refSet @_ats[indexVal]
+          @_rCache[indexVal] or= new RObject()
+          #todo: how to handle nexted RObject properly?
+          @_rCache[indexVal].refSet(val) if @_rCache[indexVal] != val
+          @_ats[indexVal] or= new RObject(@_rCache[indexVal])
 
+          switch @_type
+            when 'array'
+              #todo: what does this do?
+              @_val[indexVal] = @_rCache[indexVal]
+              child.refSet @_ats[indexVal]
+            when 'proxy'
+              child.refSet @_val.at(index)
+            else
+              child.refSet null
+
+        @on 'change', update
         if index instanceof RObject
           index.on 'change', update
         update()
