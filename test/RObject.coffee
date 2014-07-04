@@ -403,7 +403,7 @@ describe '#value()', ->
 
     it 'should give value of values added later via prop', ->
       o = new RObject({})
-      o.prop 'cat', 'mouse'
+      o.prop('cat').set 'mouse'
       assert.strictEqual o.value().cat, 'mouse'
 
     it 'should give native value for items that have had a property accessed', ->
@@ -1276,28 +1276,15 @@ describe '#at()', ->
 describe '#prop()', ->
 
 
-
-
-
   describe 'type: Object', ->
     it 'should allow getting properties of passed in the constructor', ->
       o = new RObject { eight: '8', nine: '9' }
       assert.strictEqual '8', o.prop('eight').value()
       assert.strictEqual '9', o.prop('nine').value()
 
-    it 'should allow setting properties and getting them back', ->
-      o = new RObject {}
-      o.prop 'great', 'job'
-      assert.strictEqual 'job', o.prop('great').value()
-
     it 'should give empty when accessing unset property', ->
       o = new RObject {}
       assert.strictEqual null, o.prop('lol').value()
-
-    it 'should set property to empty when set to undefined', ->
-      o = new RObject {}
-      o.prop 'great', undefined
-      assert.strictEqual null, o.prop('great').value()
 
     # it 'should not allow access to array items of the same name', ->
     #   o = new RObject [6]

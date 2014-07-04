@@ -156,10 +156,6 @@ do ->
 
 
       prop: (name, value) ->
-        if arguments.length > 1
-          prop = @prop(name).set value
-          return prop
-
         child = new RObject()
         update = =>
           nameVal = if name instanceof RObject then name.value() else name

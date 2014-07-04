@@ -107,7 +107,7 @@ define (require) ->
     $el.append $done, $label, $tags
 
     task.prop('done').watch (value) ->
-      $done.prop 'checked', !!value
+      $done.prop('checked').set !!value
 
     $el
 
