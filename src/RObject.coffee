@@ -178,7 +178,7 @@ do ->
         update()
         child
 
-      #todo: optimize - dont use an extra proxy when index is static
+      #todo: optimize - dont use an extra proxy when index is static?
       at: (index) ->
         child = new RObject()
         update = =>
@@ -186,10 +186,11 @@ do ->
           # it is important that elements in _ats are proxied to the item in _rCache at index
           val = if @_type == 'array' then @_val[indexVal] else null
 
-          @_rCache[indexVal] or= new RObject()
-          #todo: how to handle nexted RObject properly?
-          @_rCache[indexVal].refSet(val) if @_rCache[indexVal] != val
-          @_ats[indexVal] or= new RObject(@_rCache[indexVal])
+          if typeof indexVal is 'number'
+            @_rCache[indexVal] or= new RObject()
+            #todo: how to handle nested RObject properly?
+            @_rCache[indexVal].refSet(val) if @_rCache[indexVal] != val
+            @_ats[indexVal] or= new RObject(@_rCache[indexVal])
 
           switch @_type
             when 'array'
@@ -215,7 +216,6 @@ do ->
               requestedNumToRemove - removeHangover
             else
               requestedNumToRemove
-
 
             rItemsToAdd = for item, i in itemsToAdd
               if item instanceof RObject then item else new RObject(item)
@@ -243,6 +243,9 @@ do ->
               @emit 'add', rItemsToAdd, {index}
 
             removed
+
+          when 'proxy'
+            @_val.splice.apply @_val, arguments
           #todo string
           else
             @

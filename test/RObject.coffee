@@ -960,6 +960,11 @@ describe '#splice()', ->
     assert.deepEqual removeValue, [1, 2, 3, 4]
     assert.deepEqual addValue, [1, 2, 3, 4]
 
+  it 'should work on a proxy array', ->
+    o = new RObject new RObject([1, 8, 6, 4])
+    o.splice 1, 2, 2, 3
+    assert.deepEqual o.value(), [1, 2, 3, 4]
+
   # this seems random but it's an edge case that was failing at one point
   it 'should splice in an RObject to the front of an array', ->
     o = new RObject([new RObject(2)])
@@ -967,8 +972,26 @@ describe '#splice()', ->
     assert.deepEqual o.value(), [1, 2]
 
 
-#todo: test index as non robject and robject
 describe '#at()', ->
+
+  it 'should give empty for an empty index', ->
+    assert.strictEqual new RObject([1]).at(null).value(), null
+
+  it 'should give empty for a string index', ->
+    assert.strictEqual new RObject([1]).at('asd').value(), null
+
+  it 'should give empty for a boolean index', ->
+    assert.strictEqual new RObject([1]).at(true).value(), null
+
+  it 'should give empty for an object index', ->
+    assert.strictEqual new RObject([1]).at({a: 'lol'}).value(), null
+
+  it 'should give empty for an array type index', ->
+    assert.strictEqual new RObject([1]).at([0]).value(), null
+
+  it 'should give empty for a string index when the string contains a number', ->
+    assert.strictEqual new RObject([1]).at('0').value(), null
+
   describe 'types', ->
     it 'should give correct value for array value in the middle of the array', ->
       a = new RObject([1, 2, 3])
@@ -1125,6 +1148,29 @@ describe '#at()', ->
       a.splice 1, 0, 2, 3
       assert.strictEqual atIndex1.value(), 2
 
+    it 'should update item at index when value is replaced on proxy value', ->
+      a = new RObject new RObject([1, 3])
+      atIndex1 = a.at(1)
+      a.splice 1, 0, 2
+      assert.strictEqual atIndex1.value(), 2
+
+    it 'should clear result when item at index is shifted on proxy value', ->
+      a = new RObject new RObject([1, 2, 3])
+      atIndex1 = a.at(1)
+      a.splice 1, 1
+      assert.strictEqual atIndex1.value(), 3
+
+    it 'should clear result when item at index goes away on proxy value', ->
+      a = new RObject new RObject([1, 2, 3])
+      atIndex1 = a.at(1)
+      a.splice 1, 2
+      assert.strictEqual atIndex1.value(), null
+
+    it 'should clear result when item is added at index on proxy value', ->
+      a = new RObject new RObject([1])
+      atIndex1 = a.at(1)
+      a.splice 1, 0, 2, 3
+      assert.strictEqual atIndex1.value(), 2
 
   describe 'changing index', ->
     it 'should update to new value when index changes', ->
@@ -1134,6 +1180,58 @@ describe '#at()', ->
       i.set 2
       assert.strictEqual val.value(), 3
 
+    it 'should update to new value when proxy type index changes', ->
+      o = new RObject [1, 2, 3, 4]
+      i = new RObject new RObject 1
+      val = o.at i
+      i.set 2
+      assert.strictEqual val.value(), 3
+
+    it 'should update to empty when index to non-number', ->
+      o = new RObject [1, 2, 3, 4]
+      i = new RObject 1
+      val = o.at i
+      i.set 'bbq'
+      assert.strictEqual val.value(), null
+
+    it 'should update to new value when index changes with a proxy value', ->
+      o = new RObject new RObject [1, 2, 3, 4]
+      i = new RObject 1
+      val = o.at i
+      i.set 2
+      assert.strictEqual val.value(), 3
+
+    it 'should update to new value when index and array changes', ->
+      o = new RObject [1, 2, 3, 4, 5]
+      i = new RObject 1
+      val = o.at i
+      i.set 2
+      o.splice 1, 2
+      assert.strictEqual val.value(), 5
+
+    it 'should update to new value when array and index changes', ->
+      o = new RObject [1, 2, 3, 4, 5]
+      i = new RObject 1
+      val = o.at i
+      o.splice 1, 2
+      i.set 2
+      assert.strictEqual val.value(), 5
+
+    it 'should update to new value when index and array changes on a proxy value', ->
+      o = new RObject new RObject [1, 2, 3, 4, 5]
+      i = new RObject 1
+      val = o.at i
+      i.set 2
+      o.splice 1, 2
+      assert.strictEqual val.value(), 5
+
+    it 'should update to new value when array and index changes', ->
+      o = new RObject new RObject [1, 2, 3, 4, 5]
+      i = new RObject 1
+      val = o.at i
+      o.splice 1, 2
+      i.set 2
+      assert.strictEqual val.value(), 5
 
   describe 'proxy', ->
     it 'should change when value through proxy value changes', ->
@@ -1157,6 +1255,22 @@ describe '#at()', ->
       index.set 2
       assert.strictEqual atIndex.value(), 3
 
+
+  # I'm not sure if these are too "internal" to be testing but
+  # I think it could cause issues for users if it changes
+
+  it 'should not change first level nested RObject when index changes', ->
+    a = new RObject([1, 2, 3])
+    i = new RObject 1
+    atIndex1 = a.at(i).refValue()
+    i.set 2
+    assert.strictEqual atIndex1.value(), 2
+
+  it 'should not change the second level nexted RObject when array is mutated', ->
+    a = new RObject([1, 2, 3])
+    atIndex1 = a.at(1).refValue().refValue()
+    a.splice 1, 1
+    assert.strictEqual atIndex1.value(), 2
 
 #when object passed to constructor is changed later but before .prop is called, does it need to use the constructed value? (lazily create propRefs)
 describe '#prop()', ->
