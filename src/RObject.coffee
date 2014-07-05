@@ -155,22 +155,34 @@ do ->
                 at.refSet null
 
 
-      prop: (name, value) ->
+      prop: (key) ->
         child = new RObject()
         update = =>
-          nameVal = if name instanceof RObject then name.value() else name
-          @_props[nameVal] or= new RObject(@_val?[nameVal])
+          if @_type is 'proxy'
+            return child.refSet @_val.prop key
 
-          # mark this property in _val to make sure it will be iterated over in _sync
-          # would it be better to iterate through a combined and uniqued
-          # list of _val keys and _props keys?
-          if @_type is 'object' && @_val[nameVal] == undefined
-            @_val[nameVal] = undefined
+          keyVal = if key instanceof RObject then key.value() else key
 
-          child.refSet @_props[nameVal]
+          if typeof keyVal is 'string'
+            @_props[keyVal] or= new RObject(@_val?[keyVal])
 
-        if name instanceof RObject
-          name.on 'change', update
+            # mark this property in _val to make sure it will be iterated over in _sync
+            # would it be better to iterate through a combined and uniqued
+            # list of _val keys and _props keys?
+            if @_type is 'object' && @_val[keyVal] == undefined
+              @_val[keyVal] = undefined
+
+            switch @_type
+              when 'object'
+                child.refSet @_props[keyVal]
+              else
+                child.refSet null
+          else
+            child.refSet null
+
+        @on 'change', update
+        if key instanceof RObject
+          key.on 'change', update
         update()
         child
 
@@ -178,6 +190,9 @@ do ->
       at: (index) ->
         child = new RObject()
         update = =>
+          if @_type is 'proxy'
+            return child.refSet @_val.at index
+
           indexVal = if index instanceof RObject then index.value() else index
           # it is important that elements in _ats are proxied to the item in _rCache at index
           val = if @_type == 'array' then @_val[indexVal] else null
@@ -192,9 +207,8 @@ do ->
             when 'array'
               #todo: what does this do?
               @_val[indexVal] = @_rCache[indexVal]
+
               child.refSet @_ats[indexVal]
-            when 'proxy'
-              child.refSet @_val.at(index)
             else
               child.refSet null
 
