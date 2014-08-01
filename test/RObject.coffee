@@ -1629,102 +1629,222 @@ describe '#is()', ->
 
 
 
+#todo: this relies on combine and should be refactored
+describe '#inverse()', ->
+  describe 'empty', ->
+    it 'should give empty for initial empty', ->
+      o = new RObject()
+      inverse = o.inverse()
+      assert.strictEqual inverse.value(), null
+
+    it 'should clear dynamically changing value to empty', ->
+      o = new RObject(true)
+      inverse = o.inverse()
+      o.set null
+      assert.strictEqual inverse.value(), null
+
+  #todo: should give null or self?
+  describe 'string', ->
+    it 'should give same value for initial string', ->
+      o = new RObject('asdf')
+      inverse = o.inverse()
+      assert.strictEqual inverse.value(), 'asdf'
+
+    it 'should give same value dynamically changing value to string', ->
+      o = new RObject(true)
+      inverse = o.inverse()
+      o.set 'asdf'
+      assert.strictEqual inverse.value(), 'asdf'
+
+  describe 'object', ->
+    it 'should give same value for initial object', ->
+      o = new RObject({a: 'aaa'})
+      inverse = o.inverse()
+      assert.strictEqual inverse.value().a, 'aaa'
+
+    it 'should give same value dynamically changing value to object', ->
+      o = new RObject(true)
+      inverse = o.inverse()
+      o.set {a: 'aaa'}
+      assert.strictEqual inverse.value().a, 'aaa'
+
+  describe 'array', ->
+    it 'should give same value for initial array', ->
+      o = new RObject([3])
+      inverse = o.inverse()
+      assert.strictEqual inverse.value()[0], 3
+
+    it 'should give same value dynamically changing value to array', ->
+      o = new RObject(true)
+      inverse = o.inverse()
+      o.set [3]
+      assert.strictEqual inverse.value()[0], 3
+
+  describe 'boolean', ->
+    it 'should inverse initial value', ->
+      o = new RObject(false)
+      inverse = o.inverse()
+      assert.strictEqual inverse.value(), true
+
+    it 'should inverse dynamically changing boolean', ->
+      o = new RObject(false)
+      inverse = o.inverse()
+      o.set true
+      assert.strictEqual inverse.value(), false
+
+    it 'should inverse dynamically changing boolean from other type', ->
+      o = new RObject()
+      inverse = o.inverse()
+      o.set true
+      assert.strictEqual inverse.value(), false
+
+  describe 'number', ->
+    it 'should inverse initial value', ->
+      o = new RObject(5)
+      inverse = o.inverse()
+      assert.strictEqual inverse.value(), -5
+
+    it 'should inverse dynamically changing number', ->
+      o = new RObject(6)
+      inverse = o.inverse()
+      o.set 7
+      assert.strictEqual inverse.value(), -7
+
+    it 'should inverse dynamically changing number from other type', ->
+      o = new RObject()
+      inverse = o.inverse()
+      o.set 3
+      assert.strictEqual inverse.value(), -3
+
+  describe 'proxy', ->
+    it 'should inverse a proxied number', ->
+      original = new RObject(7)
+      proxy = new RObject(original)
+      inverse = proxy.inverse()
+      assert.strictEqual inverse.value(), -7
 
 
 
 
-# describe '#inverse()', ->
-#   describe 'empty', ->
-#     it 'should give empty for initial empty', ->
-#       o = new RObject()
-#       inverse = o.inverse()
-#       assert.strictEqual inverse.value(), null
+#todo: feature - handle non-robject return types and rerun fn in those cases
 
-#     it 'should clear dynamically changing value to empty', ->
-#       o = new RObject(true)
-#       inverse = o.inverse()
-#       o.set null
-#       assert.strictEqual inverse.value(), null
 
-#   #todo: should give null or self?
-#   describe 'string', ->
-#     it 'should give same value for initial string', ->
-#       o = new RObject('asdf')
-#       inverse = o.inverse()
-#       assert.strictEqual inverse.value(), 'asdf'
+describe '#map()', ->
 
-#     it 'should give same value dynamically changing value to string', ->
-#       o = new RObject(true)
-#       inverse = o.inverse()
-#       o.set 'asdf'
-#       assert.strictEqual inverse.value(), 'asdf'
+  #todo: test multi adds/removes
 
-#   describe 'object', ->
-#     it 'should give same value for initial object', ->
-#       o = new RObject({a: 'aaa'})
-#       inverse = o.inverse()
-#       assert.strictEqual inverse.value().a, 'aaa'
+  describe 'type: Array', ->
+    it 'should map initial items', ->
+      o = new RObject([1, 2])
+      inversed = o.map (item) -> item.inverse()
+      assert.deepEqual inversed.value(), [-1, -2]
 
-#     it 'should give same value dynamically changing value to object', ->
-#       o = new RObject(true)
-#       inverse = o.inverse()
-#       o.set {a: 'aaa'}
-#       assert.strictEqual inverse.value().a, 'aaa'
+    it 'should map items added later', ->
+      o = new RObject([3])
+      inversed = o.map (item) -> item.inverse()
+      o.splice 0, 0, 1, 2
+      assert.deepEqual inversed.value(), [-1, -2, -3]
 
-#   describe 'array', ->
-#     it 'should give same value for initial array', ->
-#       o = new RObject([3])
-#       inverse = o.inverse()
-#       assert.strictEqual inverse.value()[0], 3
+    it 'should remove item from the child when item is removed from the parent', ->
+      o = new RObject([1, 2, 3, 4, 5])
+      inversed = o.map (item) -> item.inverse()
+      o.splice 1, 2
+      assert.deepEqual inversed.value(), [-1, -4, -5]
 
-#     it 'should give same value dynamically changing value to array', ->
-#       o = new RObject(true)
-#       inverse = o.inverse()
-#       o.set [3]
-#       assert.strictEqual inverse.value()[0], 3
+    it 'should maintain order of added items', ->
+      o = new RObject([1, 3])
+      inversed = o.map (item) -> item.inverse()
+      o.splice 1, 0, 2
+      assert.deepEqual inversed.value(), [-1, -2, -3]
 
-#   describe 'boolean', ->
-#     it 'should inverse initial value', ->
-#       o = new RObject(false)
-#       inverse = o.inverse()
-#       assert.strictEqual inverse.value(), true
+    it 'should only call transform fn once when item is added', ->
+      o = new RObject([1])
+      transforms = 0
+      inversed = o.map (item) ->
+        transforms++
+        item.inverse()
 
-#     it 'should inverse dynamically changing boolean', ->
-#       o = new RObject(false)
-#       inverse = o.inverse()
-#       o.set true
-#       assert.strictEqual inverse.value(), false
+      transforms = 0
+      o.splice 1, 0, new RObject(2)
+      assert.strictEqual transforms, 1
 
-#     it 'should inverse dynamically changing boolean from other type', ->
-#       o = new RObject()
-#       inverse = o.inverse()
-#       o.set true
-#       assert.strictEqual inverse.value(), false
+    it 'should update when parent value changes', ->
+      num = new RObject(1)
+      o = new RObject([num])
+      inversed = o.map (item) -> item.inverse()
+      num.set(2)
+      assert.deepEqual inversed.value(), [-2]
 
-#   describe 'number', ->
-#     it 'should inverse initial value', ->
-#       o = new RObject(5)
-#       inverse = o.inverse()
-#       assert.strictEqual inverse.value(), -5
+    it 'should not rerun transform fn when parent value changes', ->
+      num = new RObject(1)
+      o = new RObject([num])
+      transforms = 0
+      inversed = o.map (item) ->
+        transforms++
+        item.inverse()
 
-#     it 'should inverse dynamically changing number', ->
-#       o = new RObject(6)
-#       inverse = o.inverse()
-#       o.set 7
-#       assert.strictEqual inverse.value(), -7
+      num.set(2)
+      assert.strictEqual transforms, 1
 
-#     it 'should inverse dynamically changing number from other type', ->
-#       o = new RObject()
-#       inverse = o.inverse()
-#       o.set 3
-#       assert.strictEqual inverse.value(), -3
 
-#   describe 'proxy', ->
-#     it 'should inverse a proxied number', ->
-#       original = new RObject(7)
-#       proxy = new RObject(original)
-#       inverse = proxy.inverse()
-#       assert.strictEqual inverse.value(), -7
+    describe 'non-RObject returned from transform fn', ->
+      it 'should transform initial items', ->
+        o = new RObject([1, 2])
+        inversed = o.map (item) ->
+          -item.value()
+
+        assert.deepEqual inversed.value(), [-1, -2]
+
+      it 'should transform items added later', ->
+        o = new RObject([])
+        inversed = o.map (item) ->
+          -item.value()
+
+        o.splice 0, 0, 1, 2
+        assert.deepEqual inversed.value(), [-1, -2]
+
+      it 'should fire add event with RObject', ->
+        o = new RObject([])
+        inversed = o.map (item) ->
+          -item.value()
+
+        adds = []
+        inversed.on 'add', (items) ->
+          adds = items
+
+        o.splice 0, 0, 1, 2
+        assert.deepEqual adds.map((add) -> add.value()), [-1, -2]
+
+  describe 'type: Other', ->
+    it 'should return null', ->
+      o = new RObject()
+      inversed = o.map (item) -> item.inverse()
+
+      assert.deepEqual inversed.value(), null
+
+  it 'should handle dynamic type change to array', ->
+    o = new RObject()
+    inversed = o.map (item) ->
+      item.inverse()
+
+    o.set [1, 2, 3]
+    assert.deepEqual inversed.value(), [-1, -2, -3]
+
+  it 'should handle dynamic type change from array', ->
+    o = new RObject([1, 2, 3])
+    inversed = o.map (item) ->
+      item.inverse()
+
+    o.set 6
+    assert.deepEqual inversed.value(), null
+
+
+
+
+
+
+
+
 
 
 
@@ -1733,129 +1853,6 @@ describe '#is()', ->
 
 #todo: edge case, called with empty and stuff
 #todo: negative number indexes
-
-
-#todo: rerun fn if an RObject wasnt returned?
-# describe '#map()', ->
-#   inverse = (item) ->
-#     item.inverse()
-
-#   #todo: test multi adds/removes
-
-#   describe 'type: Array', ->
-#     it 'should map initial items', ->
-#       o = new RObject([1, 2])
-#       inversed = o.map inverse
-#       assert.deepEqual inversed.value(), [-1, -2]
-
-#     it 'should map item added later', ->
-#       o = new RObject([2])
-#       inversed = o.map inverse
-#       o.splice 0, 0, 1
-#       assert.deepEqual inversed.value(), [-1, -2]
-
-#     it 'should remove item from the child when item is removed from the parent', ->
-#       o = new RObject([1, 2, 3])
-#       inversed = o.map inverse
-#       o.splice 1, 1
-#       assert.deepEqual inversed.value(), [-1, -3]
-
-#     it 'should set length of initial value', ->
-#       o = new RObject([2])
-#       inversed = o.map inverse
-#       o.splice 0, 0, 1
-#       assert.deepEqual inversed.length().value(), 2
-
-#     it 'should set length of items added later', ->
-#       o = new RObject([2])
-#       inversed = o.map inverse
-#       inversedLength = inversed.length()
-#       o.splice 0, 0, 1
-#       assert.deepEqual inversedLength.value(), 2
-
-#     it 'should maintain order of added items', ->
-#       o = new RObject([1, 3])
-#       inversed = o.map inverse
-#       o.splice 1, 0, 2
-#       assert.deepEqual inversed.value(), [-1, -2, -3]
-
-#     it 'should only call transform fn once when item is added', ->
-#       o = new RObject([1])
-#       transforms = 0
-#       inversed = o.map (item) ->
-#         transforms++
-#         item.inverse()
-
-#       transforms = 0
-#       o.splice 1, 0, new RObject(2)
-#       assert.strictEqual transforms, 1
-
-#     it 'should update when parent value changes', ->
-#       num = new RObject(1)
-#       o = new RObject([num])
-#       inversed = o.map inverse
-#       num.set(2)
-#       assert.deepEqual inversed.value(), [-2]
-
-#     it 'should not rerun transform fn when parent value changes', ->
-#       num = new RObject(1)
-#       o = new RObject([num])
-#       transforms = 0
-#       inversed = o.map (item) ->
-#         transforms++
-#         item.inverse()
-
-#       num.set(2)
-#       assert.strictEqual transforms, 1
-
-
-#     describe 'non-RObject returned from transform fn', ->
-#       it 'should transform initial items', ->
-#         o = new RObject([1, 2])
-#         inversed = o.map (item) ->
-#           -item.value()
-
-#         assert.deepEqual inversed.value(), [-1, -2]
-
-#       it 'should transform items added later', ->
-#         o = new RObject([])
-#         inversed = o.map (item) ->
-#           -item.value()
-
-#         o.splice 0, 0, 1, 2
-#         assert.deepEqual inversed.value(), [-1, -2]
-
-#       it 'should fire add event with RObject', ->
-#         o = new RObject([])
-#         inversed = o.map (item) ->
-#           -item.value()
-
-#         adds = []
-#         inversed.on 'add', (items) ->
-#           adds = items
-
-#         o.splice 0, 0, 1, 2
-#         assert.deepEqual adds.map((add) -> add.value()), [-1, -2]
-
-#   describe 'type: Other', ->
-#     it 'should return null', ->
-#       o = new RObject()
-#       inversed = o.map inverse
-
-#       assert.deepEqual inversed.value(), null
-
-#   #todo: dynamic changes to every type
-
-#   # it 'should handle dynamic type change', ->
-#   #   o = new RObject()
-#   #   inversed = o.map (item) ->
-#   #     item.inverse()
-
-#   #   o.set [3]
-#   #   assert.deepEqual inversed.value(), [-3]
-#   #   o.set null
-#   #   assert.deepEqual inversed.value(), null
-
 
 #todo: refector to use 1 assert vvvvvvv
 #todo: text truthiness and falsyness

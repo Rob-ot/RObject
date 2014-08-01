@@ -292,15 +292,15 @@ do ->
       #   @on 'change', run
       #   run()
 
-      # inverse: ->
-      #   @combine (value) =>
-      #     switch @type().value()
-      #       when 'boolean'
-      #         !value
-      #       when 'number'
-      #         -value
-      #       else
-      #         value
+      inverse: ->
+        @combine (value) =>
+          switch @type().value()
+            when 'boolean'
+              !value
+            when 'number'
+              -value
+            else
+              value
 
 
       # add: (items, opts) ->
@@ -464,30 +464,30 @@ do ->
       #   child
 
 
-      # map: (transform) ->
-      #   child = new RObject()
-      #   update = =>
-      #     child.set switch @_type
-      #       when 'array'
-      #         for item, i in @_val
-      #           transform @_rCache[i] or= new RObject(@_val[i])
-      #       else
-      #         null
+      map: (transform) ->
+        child = new RObject()
+        reset = =>
+          child.set switch @_type
+            when 'array'
+              for item, i in @_val
+                transform @_rCache[i] or= new RObject(@_val[i])
+            else
+              null
 
-      #   @on 'remove', (items, {index}) ->
-      #     child.splice index, items.length
+        @on 'remove', (items, {index}) ->
+          child.splice index, items.length
 
-      #   @on 'add', (items, {index}) ->
-      #     transformed = for item in items
-      #       result = transform item
-      #       if result instanceof RObject then result else new RObject(result)
+        @on 'add', (items, {index}) ->
+          transformed = for item in items
+            result = transform item
+            if result instanceof RObject then result else new RObject(result)
 
-      #     child.splice index, 0, transformed...
+          child.splice index, 0, transformed...
 
-      #   @on 'change', update
-      #   update()
+        @on 'change', reset
+        reset()
 
-      #   child
+        child
 
 
       subtract: (operand) ->
