@@ -274,16 +274,16 @@ do ->
 
 
 
-      # combine: (operands..., handler) ->
-      #   child = new RObject()
-      #   cb = =>
-      #     operandValues = (operand.value() for operand in operands)
-      #     child.set handler @value(), operandValues...
-      #   @on 'change', cb
-      #   for operand in operands
-      #     operand.on 'change', cb
-      #   cb()
-      #   return child
+      combine: (operands..., handler) ->
+        child = new RObject()
+        cb = =>
+          operandValues = (operand.value() for operand in operands)
+          child.set handler @value(), operandValues...
+        @on 'change', cb
+        for operand in operands
+          operand.on 'change', cb
+        cb()
+        return child
 
       # executes cb with @value() immediately and anytime this changes
       # watch: (cb) ->
@@ -490,50 +490,50 @@ do ->
       #   child
 
 
-      # subtract: (operand) ->
-      #   @combine operand, (aVal, bVal) ->
-      #     aVal - bVal
+      subtract: (operand) ->
+        @combine operand, (aVal, bVal) ->
+          aVal - bVal
 
-      # multiply: (operand) ->
-      #   @combine operand, (aVal, bVal) ->
-      #     aVal * bVal
+      multiply: (operand) ->
+        @combine operand, (aVal, bVal) ->
+          aVal * bVal
 
-      # divide: (operand) ->
-      #   @combine operand, (aVal, bVal) ->
-      #     aVal / bVal
+      divide: (operand) ->
+        @combine operand, (aVal, bVal) ->
+          aVal / bVal
 
-      # mod: (operand) ->
-      #   @combine operand, (aVal, bVal) ->
-      #     aVal % bVal
+      mod: (operand) ->
+        @combine operand, (aVal, bVal) ->
+          aVal % bVal
 
-      # greaterThan: (operand) ->
-      #   @combine operand, (aVal, bVal) ->
-      #     aVal > bVal
+      greaterThan: (operand) ->
+        @combine operand, (aVal, bVal) ->
+          aVal > bVal
 
-      # greaterThanOrEqual: (operand) ->
-      #   @combine operand, (aVal, bVal) ->
-      #     aVal >= bVal
+      greaterThanOrEqual: (operand) ->
+        @combine operand, (aVal, bVal) ->
+          aVal >= bVal
 
-      # lessThan: (operand) ->
-      #   @combine operand, (aVal, bVal) ->
-      #     aVal < bVal
+      lessThan: (operand) ->
+        @combine operand, (aVal, bVal) ->
+          aVal < bVal
 
-      # lessThanOrEqual: (operand) ->
-      #   @combine operand, (aVal, bVal) ->
-      #     aVal <= bVal
+      lessThanOrEqual: (operand) ->
+        @combine operand, (aVal, bVal) ->
+          aVal <= bVal
 
-      # is: (operand) ->
-      #   @combine operand, (aVal, bVal) ->
-      #     aVal == bVal
+      is: (operand) ->
+        @combine operand, (aVal, bVal) ->
+          aVal == bVal
 
       # negate: ->
       #   @combine RNumber, (val) ->
       #     -val
 
       #todo: enforce string types?
-      # concat: (operand) ->
-      #   @combine operand, (aVal, bVal) ->
-      #     aVal + bVal
+      concat: (operand) ->
+        @combine operand, (aVal, bVal) ->
+          aVal + bVal
 
       #todo: make work on arrays
       # indexOf: (operand) ->

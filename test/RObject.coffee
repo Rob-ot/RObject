@@ -1517,6 +1517,119 @@ describe '#prop()', ->
 
 
 
+describe '#combine', ->
+  it 'should run cb with value immeditely', ->
+    value = null
+    new RObject('asdf').combine (val) ->
+      value = val
+    assert.equal value, 'asdf'
+
+   it 'should rerun cb when self value changes', ->
+    values = []
+    o = new RObject 'asdf'
+    o.combine (val) ->
+      values.push val
+    o.set 'bbq'
+    assert.equal values[1], 'bbq'
+
+  it 'should run cb with second value', ->
+    value = null
+    new RObject('asdf').combine new RObject('bbq'), (val, val2) ->
+      value = val2
+    assert.equal value, 'bbq'
+
+  it 'should rerun cb when passed value changes', ->
+    values = []
+    o = new RObject 'yummy'
+    new RObject('asdf').combine o, (val, val2) ->
+      values.push val2
+    o.set 'bbq'
+    assert.equal values[1], 'bbq'
+
+  it 'should run cb with many values', ->
+    value = null
+    new RObject('asdf').combine new RObject('bbq'), new RObject('bbq'), new RObject('bbq'), new RObject('bbq'), new RObject('yolo'), (val, val2, val3, val4, val5, val6) ->
+      value = val6
+    assert.equal value, 'yolo'
+
+# relies on #concat for live updating stuff
+describe '#concat()', ->
+  #todo: arrays and fixure out how to switch between arrays/string
+  describe 'strings', ->
+    it 'should concat a string to a rstring', ->
+      assert.strictEqual new RObject('asdf').concat(new RObject('bbq')).value(), 'asdfbbq'
+
+
+describe '#subtract()', ->
+  it 'subtracts numbers', ->
+    assert.strictEqual new RObject(8).subtract(new RObject(2)).value(), 6
+
+  it 'subtracts negative result', ->
+    assert.strictEqual new RObject(3).subtract(new RObject(4)).value(), -1
+
+describe '#multiply()', ->
+  it 'multiplys numbers', ->
+    assert.strictEqual new RObject(3).multiply(new RObject(4)).value(), 12
+
+describe '#divide()', ->
+  it 'divides numbers', ->
+    assert.strictEqual new RObject(12).divide(new RObject(3)).value(), 4
+
+describe '#mod()', ->
+  it 'mods numbers', ->
+    assert.strictEqual new RObject(11).mod(new RObject(2)).value(), 1
+
+describe '#greaterThan()', ->
+  it 'smaller number greaterThan bigger number is false', ->
+    assert.strictEqual new RObject(4).greaterThan(new RObject(5)).value(), false
+
+  it 'bigger number greaterThan smaller number is true', ->
+    assert.strictEqual new RObject(6).greaterThan(new RObject(5)).value(), true
+
+  it 'equal numbers greaterThan is false', ->
+    assert.strictEqual new RObject(6).greaterThan(new RObject(6)).value(), false
+
+describe '#greaterThanOrEqual()', ->
+  it 'smaller number greaterThanOrEqual bigger number is false', ->
+    assert.strictEqual new RObject(4).greaterThanOrEqual(new RObject(5)).value(), false
+
+  it 'bigger number greaterThanOrEqual smaller number is true', ->
+    assert.strictEqual new RObject(6).greaterThanOrEqual(new RObject(5)).value(), true
+
+  it 'equal numbers greaterThanOrEqual is true', ->
+    assert.strictEqual new RObject(6).greaterThanOrEqual(new RObject(6)).value(), true
+
+describe '#lessThan()', ->
+  it 'smaller number lessThan bigger number is true', ->
+    assert.strictEqual new RObject(4).lessThan(new RObject(5)).value(), true
+
+  it 'bigger number lessThan smaller number is false', ->
+    assert.strictEqual new RObject(6).lessThan(new RObject(5)).value(), false
+
+  it 'equal numbers lessThan is false', ->
+    assert.strictEqual new RObject(6).lessThan(new RObject(6)).value(), false
+
+describe '#lessThanOrEqual()', ->
+  it 'smaller number lessThanOrEqual bigger number is true', ->
+    assert.strictEqual new RObject(4).lessThanOrEqual(new RObject(5)).value(), true
+
+  it 'bigger number lessThanOrEqual smaller number is false', ->
+    assert.strictEqual new RObject(6).lessThanOrEqual(new RObject(5)).value(), false
+
+  it 'equal numbers lessThanOrEqual is true', ->
+    assert.strictEqual new RObject(6).lessThanOrEqual(new RObject(6)).value(), true
+
+#todo: handle different types
+describe '#is()', ->
+  it 'same numbers give true', ->
+    assert.strictEqual new RObject(6).is(new RObject(6)).value(), true
+
+  it 'different numbers give false', ->
+    assert.strictEqual new RObject(5).is(new RObject(6)).value(), false
+
+
+
+
 
 
 
