@@ -377,7 +377,7 @@ do ->
       #         continue
 
       #     if passing.length
-      #       child.add passing, index: childIndex + 1
+      #       child.splice childIndex + 1, 0, passing...
 
 
       #   removeFromChild = (items, {index}) =>

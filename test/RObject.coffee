@@ -1726,12 +1726,9 @@ describe '#inverse()', ->
 
 
 
-#todo: feature - handle non-robject return types and rerun fn in those cases
 
 
 describe '#map()', ->
-
-  #todo: test multi adds/removes
 
   describe 'type: Array', ->
     it 'should map initial items', ->
@@ -1815,6 +1812,8 @@ describe '#map()', ->
         o.splice 0, 0, 1, 2
         assert.deepEqual adds.map((add) -> add.value()), [-1, -2]
 
+      #todo: feature - handle non-robject return types and rerun fn in those cases
+
   describe 'type: Other', ->
     it 'should return null', ->
       o = new RObject()
@@ -1861,29 +1860,25 @@ describe '#map()', ->
 #     num.mod(new RObject(2)).is(new RObject(0))
 
 #   describe 'type: Array', ->
-#     # all arrays tested tests should start with a fail and pass and
-#     # should end with a pass and fail
 
 #     it 'should call back with an RObject for initial items', ->
-#       o = new RObject [3]
-#       isRObject = false
-#       evens = o.filter (val) ->
-#         isRObject = val instanceof RObject
+#       values = []
+#       evens = new RObject([3]).filter (val) ->
+#         values.push val
 #         new RObject true
-#       assert.strictEqual isRObject, true
+#       assert.strictEqual values[0] instanceof RObject, true
 
 #     it 'should call back with an RObject for dynamically added items', ->
 #       o = new RObject []
-#       isRObject = false
+#       values = []
 #       evens = o.filter (val) ->
-#         isRObject = val instanceof RObject
+#         values.push val
 #         new RObject true
 #       o.splice 0, 0, 3
-#       assert.strictEqual isRObject, true
+#       assert.strictEqual values[0] instanceof RObject, true
 
 #     it 'should filter initial items', ->
-#       o = new RObject([1, 2, 3, 4, 5, 6, 7])
-#       evens = o.filter isEven
+#       evens = new RObject([1, 2, 3, 4, 5, 6, 7]).filter isEven
 #       assert.deepEqual evens.value(), [2, 4, 6]
 
 #     it 'should filter items added at an index', ->
@@ -1975,15 +1970,15 @@ describe '#map()', ->
 #       item.set 7
 #       assert.deepEqual evens.value(), [2, 10]
 
-#     # it.only 'should handle add after source has been shifted right', ->
-#     #   item = new RObject 7
-#     #   o = new RObject [1, 2, item, 9, 10]
-#     #   evens = o.filter isEven
-#     #   o.splice 2, 0, 5, 6
-#     #   console.log 'pre set', o.value(), evens.value()
-#     #   item.set 8
-#     #   console.log 'post set', o.value(), evens.value()
-#     #   assert.deepEqual evens.value(), [2, 6, 8, 10]
+#     it.only 'should handle add after source has been shifted right', ->
+#       item = new RObject 7
+#       o = new RObject [1, 2, item, 9, 10]
+#       evens = o.filter isEven
+#       o.splice 2, 0, 5, 6
+#       console.log 'pre set', o.value(), evens.value()
+#       item.set 8
+#       console.log 'post set', o.value(), evens.value()
+#       assert.deepEqual evens.value(), [2, 6, 8, 10]
 
 #     it 'should handle remove after source has been shifted right', ->
 #       item = new RObject 8
