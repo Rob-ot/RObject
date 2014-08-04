@@ -302,23 +302,8 @@ do ->
             else
               value
 
-
-      # add: (items, opts) ->
-      #   #todo: consider renaming to just push, I don't like that this is a mutator or a getter fn
-      #   #todo: handle adding non-number types
-      #   switch @_type
-      #     when 'array'
-      #       index = opts?.index ? @_val.length
-      #       if Array.isArray items
-      #         @splice index, 0, items...
-      #       else
-      #         @splice index, 0, items
-
-      #     when 'number'
-      #       @combine items, (aVal, bVal) ->
-      #         aVal + bVal
-      #     else
-      #       @
+      push: (items, opts) ->
+        @splice @_val.length, 0, items
 
 
       # filter: (passFail) ->
@@ -430,39 +415,29 @@ do ->
 
       #   child
 
-      # reduce: (reducer, initial) ->
-      #   child = new RObject()
+      reduce: (reducer, initial) ->
+        result = new RObject()
 
-      #   if arguments.length == 1
-      #     initial = new RObject()
+        rereduce = =>
+          prevValue = initial ? new RObject()
+          for item, i in @_val
+            prevValue = reducer prevValue, @_rCache[i] or= new RObject(@_val[i])
 
-      #   listeners = []
+          result.refSet prevValue
 
-      #   reReduce = =>
-      #     for listener in listeners
-      #       listener.target.off listener.event, listener.handler
+        update = =>
+          switch @_type
+            when 'array'
+              rereduce()
+            else
+              result.refSet initial
 
-      #     child.set @_val.reduce(->
-      #       result = reducer arguments...
-      #       result.on 'change', reReduce
-      #       listeners.push target: result, event: 'change', handler: reReduce
-      #       result
-      #     , initial).value()
+        @on 'remove', rereduce
+        @on 'add', rereduce
+        @on 'change', update
+        update()
 
-      #   update = =>
-      #     switch @_type
-      #       when 'array'
-      #         @on 'add', reReduce
-      #         @on 'remove', reReduce
-      #         reReduce()
-      #       else
-      #         child.set null
-
-      #   @on 'change', update
-      #   update()
-
-      #   child
-
+        result
 
       map: (transform) ->
         child = new RObject()
@@ -489,6 +464,11 @@ do ->
 
         child
 
+
+      #todo: handle adding non-number types
+      add: (items, opts) ->
+        @combine items, (aVal, bVal) ->
+          aVal + bVal
 
       subtract: (operand) ->
         @combine operand, (aVal, bVal) ->
