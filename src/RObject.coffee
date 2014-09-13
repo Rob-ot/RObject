@@ -415,6 +415,8 @@ do ->
 
       #   child
 
+      #tooptimize: could start with the value of the item before item
+      #  added and only do a partial reduce (good for adding to end)
       reduce: (reducer, initial) ->
         result = new RObject()
 
