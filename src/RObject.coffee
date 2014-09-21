@@ -306,114 +306,101 @@ do ->
         @splice @_val.length, 0, items
 
 
-      # filter: (passFail) ->
+      filter: (passFail) ->
+        child = new RObject()
 
-      #   child = new RObject()
-      #   passChangeHandlers = []
+        # an array of passfail booleans with a 1:1 correspondence to the parent
+        # looks like [ [passFailBoolean, handler] ]
+        passChangeHandlers = []
 
-      #   # self = this
-      #   # passings = @map (value) ->
-      #   #   passFail value
+        addToChild = (items, {index, _viaPassFail}) =>
+          # starting at location the items were added,
+          # find the nearest preceding item in parent that is also in child
+          parentIndex = index - 1
+          #todo: this needs to be searching for an instance not a value
+          # console.log 'vals', child.value(), 'indexOf', @_val[parentIndex]
+          # console.log 'nons', child._rCache.map((o) -> o?.refValue()), 'indexOf', @_rCache[parentIndex]?._id
+          while (childIndex = child.value().indexOf(@_val[parentIndex])) == -1
+            parentIndex--
+            if parentIndex < 0
+              break
 
-      #   # # handleAdd = ->
-      #   # #   console.log 'handleAdd', @
+          passing = for item, i in items
+            passes = passFail item
+            passFailChange = do (item, passes) =>
+              =>
+                index = @_rCache.indexOf item
+                if passes.value()
+                  addToChild [item], {index, _viaPassFail: true}
+                else
+                  removeFromChild [item], {index, _viaPassFail: true}
 
-      #   # #todo: use subscribe here?
-      #   # passings.on 'add', (passesGroup) ->
-      #   #   for passes in passesGroup
-      #   #     passes.on 'change', handleAdd
+            passes.on 'change', passFailChange if !_viaPassFail
+            passChangeHandlers.splice index + i, 0, [passes, passFailChange]
 
-      #   # passings.reduce (prev, current, index) ->
+            if passes.value()
+              item
+            else
+              continue
 
-      #   # # a 1:1 mapping of this value to child indexes
-      #   # # we need to (quickly) know where to insert items in the child
-      #   # # with just a parent id, we use this to look those up
-      #   # # childIndexes[parentIndex] == childIndex of that item or null
-      #   # childIndexes = []
-
-
-      #   addToChild = (items, {index, noListen}) =>
-      #     # starting at location the items were added,
-      #     # find the nearest preceding item in parent that is also in child
-      #     parentIndex = index - 1
-      #     #todo: this needs to be searching for an instance not a value
-      #     while (childIndex = child.value().indexOf(@_val[parentIndex])) == -1
-      #       parentIndex--
-      #       if parentIndex < 0
-      #         break
-
-      #     passing = for item, i in items
-      #       passes = passFail item
-      #       updatee = do (i, passes, item) =>
-      #         =>
-      #           if passes.value()
-      #             addToChild [item], index: index + i, noListen: true
-      #           else
-      #             removeFromChild [item], index: index + i
-
-      #       #todo: test noListen
-      #       passes.on 'change', updatee if !noListen
-      #       # console.log 'set passChangeHandler', index + i
-      #       passChangeHandlers.splice index + i, 0, [passes, updatee]
-
-      #       if passes.value()
-      #         item
-      #       else
-      #         continue
-
-      #     if passing.length
-      #       child.splice childIndex + 1, 0, passing...
+          if passing.length
+            child.splice childIndex + 1, 0, passing...
 
 
-      #   removeFromChild = (items, {index}) =>
-      #     # find my index of the first item removed (if any) that is also in child
-      #     removedIndex = 0
-      #     #todo: is it okay to assume child.elements is vivified? we shouldn't reach into child
-      #     while (childIndex = child._rCache.indexOf(items[removedIndex])) == -1
-      #       ++removedIndex
+        removeFromChild = (items, {index, _viaPassFail}) =>
 
-      #       if removedIndex >= items.length
-      #         # none of the removed items were in child, nothing to do
-      #         return
+          if !_viaPassFail
+            # since they were removed from parent, remove listeners
+            for item, i in items
+              [passes, passFailChange] = passChangeHandlers[index + i]
+              passes.off 'change', passFailChange
+            passChangeHandlers.splice index + i, items.length
 
-      #     # now removedIndex is my index of the first item that is in child
-      #     #  and childIndex is childs index of that item
-      #     # we now start removing items
-      #     #  keeping in mind not all items are in child so we may have to skip some
+          # find index in 'this' of the first item removed (if any) that is also in child
+          removedIndex = 0 #todo: can we start at 'index'?
+          #todo: is it okay to assume child.elements is vivified? we shouldn't reach into child
+          while (childIndex = child._rCache.indexOf(items[removedIndex])) == -1
+            removedIndex++
 
-      #     while removedIndex < items.length && childIndex < child._rCache.length
-      #       match = items[removedIndex] == child._rCache[childIndex]
+            if removedIndex >= items.length
+              # none of the removed items were in child, nothing to do
+              return
 
-      #       if match
-      #         # console.log 'removeFromChild', child[childIndex]
-      #         child.splice childIndex, 1
-      #         [passes, updatee] = passChangeHandlers[childIndex]
-      #         # passes.off 'change', updatee
-      #         passChangeHandlers.splice childIndex, 1
-      #         # console.log 'removing passChangeHandler', childIndex
+          # now removedIndex is index in 'this' of the first removed item that is in child
+          #  and childIndex is childs index of that item
+          # we now start removing items
+          #  keeping in mind not all items are in child so we may have to skip some
 
-      #         ++removedIndex
-      #       else
-      #         ++childIndex
+          while removedIndex < items.length
+            match = items[removedIndex] == child._rCache[childIndex]
 
-      #   change = =>
-      #     while passChangeHandler = passChangeHandlers.pop()
-      #       passChangeHandler[0].off 'change', passChangeHandler[1]
-      #     switch @_type
-      #       when 'array'
-      #         child.set [] #todo: test and fix double change of child
-      #         @_vivifyAll()
-      #         addToChild @_rCache, index: 0
-      #       else
-      #         child.set null
+            if match
+              child.splice childIndex, 1
+              #todo: only trigger 1 splice event
+              # could potentially just count how many removed items are actually
+              #  in the child array and splice off that many
+              #  since we know removed items are contiguous
 
-      #   @on 'add', addToChild
-      #   @on 'remove', removeFromChild
+            removedIndex++
 
-      #   @on 'change', change
-      #   change()
+        change = =>
+          while passChangeHandler = passChangeHandlers.pop()
+            passChangeHandler[0].off 'change', passChangeHandler[1]
 
-      #   child
+          switch @_type
+            when 'array'
+              child.set [] #todo: test and fix double change of child
+              @_vivifyAll()
+              addToChild @_rCache, index: 0
+            else
+              child.set null
+
+        @on 'add', addToChild
+        @on 'remove', removeFromChild
+        @on 'change', change
+        change()
+
+        child
 
       #tooptimize: could start with the value of the item before item
       #  added and only do a partial reduce (good for adding to end)
