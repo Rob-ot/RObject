@@ -24,9 +24,7 @@ define (require) ->
   window.notDoneTasks = notDoneTasks = tasks.filter (task) ->
     task.prop('done').inverse()
 
-  # filteredNotDoneTasks = notDoneTasks.filter (task) ->
-  #   console.log 'task is', task
-  #   debugger
+  # filteredTasks = notDoneTasks.filter (task) ->
   #   task.prop('title').indexOf(filterValue).is(new RObject(-1)).inverse()
 
   $add = $ '<button>', html: 'Add'
@@ -107,7 +105,7 @@ define (require) ->
     $el.append $done, $label, $tags
 
     task.prop('done').watch (value) ->
-      $done.prop('checked').set !!value
+      $done.attr 'checked', !!value
 
     $el
 
@@ -142,6 +140,7 @@ define (require) ->
     # chars = tasks.reduce (prev, curr) ->
     #   prev.add curr.prop('title').length()
     # , new RObject(0)
+    console.log chars
 
     chars.watch (value) ->
       $bottom.text "(#{value})"
@@ -159,5 +158,7 @@ define (require) ->
   $main.append $add
   $main.append taskSection 'All', tasks
   $main.append taskSection 'To Do', notDoneTasks
+  $main.append taskSection 'Done', doneTasks
+
   $main.append $filterInput
-  $main.append taskSection 'Done', filteredDoneTasks
+  $main.append taskSection 'Search', doneTasks

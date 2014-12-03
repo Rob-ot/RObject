@@ -1086,6 +1086,36 @@ describe '#subscribe()', ->
     #   o.set new RObject [1, 2, 3]
     #   assert.strictEqual calls, 3
 
+describe '#watch', ->
+  it 'runs fn once with initial value', ->
+    runs = 0
+    new RObject(4).watch ->
+      runs++
+    assert.equal runs, 1
+
+  it 'passes fn initial value', ->
+    value = null
+    new RObject(4).watch (v) ->
+      value = v
+    assert.equal value, 4
+
+  it 'runs fn when value changes', ->
+    runs = 0
+    o = new RObject 4
+    o.watch ->
+      runs++
+    runs = 0
+    o.set 'asdf'
+    assert.equal runs, 1
+
+  it 'passes fn new value when value changes', ->
+    value = null
+    o = new RObject 4
+    o.watch (v) ->
+      value = v
+    value = null
+    o.set 'asdf'
+    assert.equal value, 'asdf'
 
 describe '#at()', ->
 

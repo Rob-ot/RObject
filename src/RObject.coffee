@@ -301,11 +301,11 @@ do ->
         return child
 
       # executes cb with @value() immediately and anytime this changes
-      # watch: (cb) ->
-      #   run = =>
-      #     cb @value()
-      #   @on 'change', run
-      #   run()
+      watch: (cb) ->
+        run = =>
+          cb @value()
+        @on 'change', run
+        run()
 
       inverse: ->
         @combine (value) =>
