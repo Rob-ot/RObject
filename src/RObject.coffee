@@ -521,16 +521,16 @@ do ->
           aVal + bVal
 
       #todo: make work on arrays
-      # indexOf: (operand) ->
-      #   # how do we handle passed in RObjects?! check by value or ref?
-      #   @combine operand, (aVal, bVal) =>
-      #     switch @type().value()
-      #       when 'string'
-      #         aVal.indexOf bVal
-      #       when 'array'
-      #         -1
-      #       else
-      #         -1
+      indexOf: (operand) ->
+        # how do we handle passed in RObjects?! check by value or ref?
+        @combine operand, (aVal, bVal) =>
+          switch @type().value()
+            when 'string'
+              aVal.indexOf bVal
+            when 'array'
+              -1
+            else
+              -1
 
     RObject.typeFromNative = (object) ->
       if object == null || object == undefined

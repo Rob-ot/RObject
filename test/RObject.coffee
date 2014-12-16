@@ -12,7 +12,7 @@ RObject = require '../src/RObject'
 #todo: test empty cases
 
 # #push()
-# #watch()
+# #indexOf() on arrays
 
 #todo: test refValue
 
@@ -2350,30 +2350,64 @@ describe '#reduce()', ->
 #     o1.set 'baz'
 #     assert.strictEqual result.value(), 'bazbar'
 
-# describe '#indexOf()', ->
-#   it 'should have initial index value', ->
-#     o1 = new RObject('foobarbaz')
-#     o2 = new RObject('bar')
-#     assert.strictEqual o1.indexOf(o2).value(), 3
+describe '#indexOf()', ->
+  describe 'string', ->
+    it 'should return an RObject', ->
+      o1 = new RObject('foobarbaz')
+      o2 = new RObject('bar')
+      assert.strictEqual o1.indexOf(o2) instanceof RObject, true
 
-#   it 'should return an RObject', ->
-#     o1 = new RObject('foobarbaz')
-#     o2 = new RObject('bar')
-#     assert.strictEqual o1.indexOf(o2) instanceof RObject, true
+    it 'should have initial index value', ->
+      o1 = new RObject('foobarbaz')
+      o2 = new RObject('bar')
+      assert.strictEqual o1.indexOf(o2).value(), 3
 
-#   it 'should give -1 for not found', ->
-#     o1 = new RObject('foobarbaz')
-#     o2 = new RObject('zing')
-#     assert.strictEqual o1.indexOf(o2).value(), -1
+    it 'should give -1 for not found', ->
+      o1 = new RObject('foobarbaz')
+      o2 = new RObject('zing')
+      assert.strictEqual o1.indexOf(o2).value(), -1
 
-#   it 'should update index when either value changes', ->
-#     o1 = new RObject('barbaz')
-#     o2 = new RObject('bar')
-#     result = o1.indexOf(o2)
-#     o1.set 'foobarbaz'
-#     assert.strictEqual result.value(), 3
-#     o2.set 'arb'
-#     assert.strictEqual result.value(), 4
+    it 'should switch to -1 when first value changes', ->
+      o1 = new RObject('foobarbaz')
+      o2 = new RObject('bar')
+      idx = o1.indexOf o2
+      o1.set 'bbq'
+      assert.strictEqual idx.value(), -1
+
+    it 'should switch to correct index when first value changes', ->
+      o1 = new RObject('foobarbaz')
+      o2 = new RObject('zing')
+      idx = o1.indexOf o2
+      o1.set 'bingazingaling'
+      assert.strictEqual idx.value(), 5
+
+    it 'should switch to -1 when second value changes', ->
+      o1 = new RObject('foobarbaz')
+      o2 = new RObject('bar')
+      idx = o1.indexOf o2
+      o2.set 'yolo'
+      assert.strictEqual idx.value(), -1
+
+    it 'should switch to correct index when second value changes', ->
+      o1 = new RObject('foobarbaz')
+      o2 = new RObject('zing')
+      idx = o1.indexOf o2
+      o2.set 'bar'
+      assert.strictEqual idx.value(), 3
+
+    it 'should switch to new index when first value changes', ->
+      o1 = new RObject('foobarbaz')
+      o2 = new RObject('bar')
+      idx = o1.indexOf o2
+      o1.set 'foobazbar'
+      assert.strictEqual idx.value(), 6
+
+    it 'should switch to new index when second value changes', ->
+      o1 = new RObject('foobarbaz')
+      o2 = new RObject('bar')
+      idx = o1.indexOf o2
+      o2.set 'baz'
+      assert.strictEqual idx.value(), 6
 
 #   describe 'array', ->
 
