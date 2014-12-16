@@ -230,8 +230,9 @@ do ->
             rItemsToAdd = for item, i in itemsToAdd
               if item instanceof RObject then item else new RObject(item)
 
-            # since _rCache is sparse, make sure index exists so splice works properly
-            @_rCache[index] ?= undefined
+            # since _rCache can be sparse, make sure index exists so splice works properly
+            if index + numToRemove > @_rCache.length
+              @_rCache[index] ?= undefined
 
             rRemoved = @_rCache.splice index, numToRemove, rItemsToAdd...
 

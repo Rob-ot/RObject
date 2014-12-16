@@ -829,6 +829,11 @@ describe '#splice()', ->
     o.splice 0, 0, 0, 1
     assert.deepEqual o.value(), [0, 1]
 
+  it 'should not add extra items to _rCache', ->
+    o = new RObject([])
+    o.splice 0, 0, 0, 1
+    assert.strictEqual o._rCache.length, 2
+
   it 'should add to the middle', ->
     o = new RObject([1, 4])
     o.splice 1, 0, 2, 3
