@@ -24,16 +24,16 @@ define (require) ->
   window.notDoneTasks = notDoneTasks = tasks.filter (task) ->
     task.prop('done').inverse()
 
-  # filteredTasks = notDoneTasks.filter (task) ->
-  #   task.prop('title').indexOf(filterValue).is(new RObject(-1)).inverse()
+  filteredTasks = tasks.filter (task) ->
+    task.prop('title').indexOf(filterValue).is(new RObject(-1)).inverse()
 
   $add = $ '<button>', html: 'Add'
   $add.click ->
-    tasks.add new RObject { title: 'new task', done: false, tags: [] }
+    tasks.push new RObject { title: 'new task', done: false, tags: [] }
 
   $filterInput = $ '<input>'
 
-  $filterInput.on 'change keyup', ->
+  $filterInput.on 'keyup input', ->
     filterValue.set $filterInput.val()
 
 
@@ -82,7 +82,7 @@ define (require) ->
         e.preventDefault()
         $el.blur()
 
-    $el.keyup (e) ->
+    $el.on 'keyup input', (e) ->
       model.set $el.text()
 
     model.watch (value) ->
@@ -136,11 +136,10 @@ define (require) ->
 
     length = tasks.length()
     empty = tasks.length().is new RObject(0)
-    chars = new RObject(0)
-    # chars = tasks.reduce (prev, curr) ->
-    #   prev.add curr.prop('title').length()
-    # , new RObject(0)
-    console.log chars
+
+    chars = tasks.reduce (prev, curr) ->
+      prev.add curr.prop('title').length()
+    , new RObject(0)
 
     chars.watch (value) ->
       $bottom.text "(#{value})"
@@ -161,4 +160,4 @@ define (require) ->
   $main.append taskSection 'Done', doneTasks
 
   $main.append $filterInput
-  $main.append taskSection 'Search', doneTasks
+  $main.append taskSection 'Search', filteredTasks
