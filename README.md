@@ -1,80 +1,159 @@
+# RObject
 
 
+## Warning!
 
-Values are almost never mutated, if you need to say reverse an array you would make a reversed (shallow) clone instead of reversing the original. Then, any time the original is modified the reversed clone will stay up to date as the current reversed version.
-
-Sub-properties and array items are vivified to RObjects lazily and only as needed, therefore cyclical structures are supported.
-
-Events should only be fired once object has been fully modified to its new state, events should not be fired with the state partially modified.
-
-The advantage of reactive is it doesn't matter how you got to a state, that state is always
-the same. No race conditions?
+This is a prototype/proof of concept/work in progress. Don't use this for mission-crirical projects.
 
 
-# v1
+## What is RObject?
 
-array at, push, pop, shift, unshift (append prepend?)
+### Core
 
-all/most standard js array operations
+At its core, RObject is a wrapper around a JavaScript value. This allows us to do cool things (farther down this doc).
 
+Just like jQuery is a wrapper around a dom element RObject is a wrapper around an Object, Array, Boolean, Number, String, or null.
 
-
-# ToDo
-
-a nice api for grouping events, like .pauseEvents() and later resume to fire the least amount of events needed to get up to date. (coalescence)
-
-A Date library that fires change events when time changes and stuff (simply wrap Moment)
+`new RObject(12)`
 
 
-_.span
+To get back the JavaScript object use the `.value` method.
 
-2d arrays?
-
-groupMap, just like map except gives arrays when new things are added in chunks, like for mapping favorites to add info by doing an xhr for each item )each group of items as they are added
-
-error and empty types?
-
-error type has code and message
-
-when doing a number computation on a string, try converting it to a number?
+```javascript
+var num = new RObject(12)
+num.value() // 12
+```
 
 
+Object properties can be accessed with `.prop`.
 
-do we need to do event bubbling? can we?
-at least prop > object?
+```javascript
+var obj = new RObject({foo: 'bar'})
+obj.prop('foo').value() // 'bar'
+```
 
-first class functions ?!?!
+Array elements can be accessed using `.at`.
 
-what happens when you create an RObject with an RObject?
+```javascript
+var arr = new RObject(['baz'])
+arr.at(0).value() // 'baz'
+```
 
-make it more clear when the fn is a mutator ($ prefix maybe?)
+Note how `.prop` and `.at` return instances of RObjects so chaining is possible.
 
-o = new RObject({a: new RObject('a')})
-o.prop('a', new RObject('b')) # what happens?!!
+### Changes
+
+RObjects can be changed using `.set`.
+
+```javascript
+var num = new RObject(12)
+num.set(129)
+num.value() // 129
+```
+
+`.prop` and `.at` references can hang around and will be updated when the base object/array is updated
+
+```javascript
+var names = new RObject(['Jack', 'Neo', 'Bob'])
+var keanu = names.at(1)
+keanu.value() // Neo
+names.set(['Jack', 'John Wick', 'Bob'])
+keanu.value() // John Wick
+```
+
+Non existant object props and array elements return an empty RObject reference which is also updated when the base object/array is updated.
+
+```javascript
+var user = new RObject(null)
+var userName = user.prop('name')
+userName.value() // null
+user.set({name: 'Keanu'})
+userName.value() // Keanu
+```
+
+Change events are fired when the value of an RObject changes.
+
+```javascript
+var num = new RObject(null)
+num.on('change', function() { console.log('It changed!') })
+num.set(34) // fires change event: It changed!
+```
+
+Object props and array elements also fire change events when the underlying object changes.
+
+```javascript
+var user = new RObject(null)
+var userName = user.prop('name')
+userName.on('change', function() { console.log('Name updated!') })
+user.set({name: 'Keanu'}) // fires change event: Name updated!
+```
+
+### Operations
+
+Operations can be performed on an RObject.
+
+```javascript
+var num1 = new RObject(3)
+var num2 = new RObject(5)
+var total = num1.add(num2)
+var product = num1.multiply(num2)
+total.value() // 8
+product.value() // 15
+```
+
+All values are updated when the base values change.
+
+```javascript
+var age = new RObject(20)
+var canDrinkInUS = age.greaterThanOrEqual(21)
+var underage = canDrinkInUS.inverse()
+underage.value() // true
+age.set(23)
+underage.value() // false
+```
+
+Array methods work too.
+
+```javascript
+var users = new RObject()
+
+var yearsExperience = users.reduce(function(total, user) {
+  return total.add(user.prop('experience'))
+}, new RObject(0))
+
+var shortNamedUsers = users.filter(function(user) {
+  return user.prop('name').length().lessThan(new RObject(4))
+})
+
+var shortNames = shortNamedUsers.map(function(user) {
+  return user.prop('name')
+})
+
+users.set([
+  {name: 'Bob', experience: 6},
+  {name: 'Amanda', experience: 7},
+  {name: 'Jim', experience: 4}
+])
+
+yearsExperience.value() // 17
+shortNames.value() // [ 'Bob', 'Jim' ]
+```
+
+## Demo
+
+There is a very ugly demo app here http://www.middlerob.com/robject-todo/
 
 
+## Background
 
-#default() (sets to given value if source is empty)
+I've been working on this project on and off for a couple years. It was originally inspired by functional reactive programming but obviously has developed a JavaScript twist.
 
-map returns an array of RObjects always, is that what we want? (query objects)
+Webapps are becoming more and more dynamic, especially with the rise of real time data. Some JavaScript frameworks deal with all these changes by detecting what has changed between renders. Libraries like Backbone handle changes by monitoring data objects but Backbones implementation has some serious limitations like nested data.
 
-solved problems
-types can change but everyone else already has a reference to an object so it can't change, must combine all types into same object
+This monitoring-data approach also has some sharp edges: lots of changes to data often result in thrashing the DOM which degrades webapp performance significantly, it's possible to get into deadlock conditions with circular event listeners, and lots of event listeners can end up using a significant amount of of memory.
 
-defer some computations to nextTick by passing in defer: true?
+Good idea or not I wanted to get RObject out there to share with the world. Know that it's pretty messy from lots of iteration and experimentation.
 
-handle when set is called during a change event
+Thanks for checking it out!
 
-toNumber, etc?
-
-async map
-throttle
-groupMap
-
-getters/virtuals
-
-an easy way to track what instance you're looking at in js debugger, maybe give each instance a name and that name is added on to as it passes through monads
-
-merge
-
-merge array values when set to a new array?
+PS: If you have any feedback or thoughts on this feel free to email me rob@middlerob.com or Tweet me @rob__ot
